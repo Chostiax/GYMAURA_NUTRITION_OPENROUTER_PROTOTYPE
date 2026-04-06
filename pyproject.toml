@@ -1,0 +1,16 @@
+[project]
+name = "gymaura-nutrition-openrouter-poc"
+version = "0.1.0"
+description = "GymAura nutrition PoC using OpenRouter lightweight model"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas",
+    "rapidfuzz",
+    "streamlit",
+    "httpx",
+    "python-dotenv",
+]
+
+[tool.uv]
+package = false
