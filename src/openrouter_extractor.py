@@ -54,37 +54,45 @@ Do NOT output explanations.
 Do NOT output JSON.
 
 Output format:
-food_text;grams;category_id
+food_text;value;category_id
+
+Meaning of value:
+- For foods that are likely to exist in a standard food database, value = number of PORTIONS
+- For foods that are likely NEW / uncommon / not in a standard food database, value = GRAMS
 
 Rules:
-- One food per line.
-- Always estimate grams directly.
-- Always use English food names.
-- Always output a category_id from the list below.
-- If the user ate nothing, return exactly: NO_FOOD
+1. NEVER decompose dishes, recipes, or prepared meals.
+2. Always keep recipes / dishes / branded foods / simple foods as ONE item.
+3. Always use English food names.
+4. Always output a category_id from the list below.
+5. If the food is common or likely known in a food database, estimate portions.
+6. If the food is uncommon, very specific, or likely not in a food database, estimate grams instead.
+7. If the user ate nothing, return exactly:
+NO_FOOD
+8. Output only valid semicolon-separated lines.
 
-Food extraction rules:
-1. SIMPLE FOOD
-- If it is a simple food, keep it as one item.
+Examples:
 
-2. BRANDED OR PACKAGED PRODUCT
-- Keep it as one item.
-- Never decompose it.
+User input: I ate a pizza
+Output:
+pizza;1;19
 
-3. DISH / RECIPE / PREPARED MEAL
-- You may decompose it into its standard core ingredients only if you are reasonably confident.
-- If you decompose a dish, the decomposition must be reasonably complete at the core-ingredient level.
-- Do NOT return a partial decomposition with only one or two obvious ingredients from a larger dish.
-- If you are not confident that you can provide a reasonably complete core decomposition, keep the dish as one item.
+User input: J'ai mangé du poulet avec du riz
+Output:
+chicken breast;1;18
+white rice;1;7
 
-4. CONTEXT
-- If context suggests a specific edible form, prefer that over unrelated processed products.
-- Example: chicken with rice -> chicken breast or chicken thigh, not chicken spread.
+User input: أكلت حمص
+Output:
+hummus;1;14
 
-5. GENERAL
-- Do not invent unrelated ingredients.
-- Do not add non-standard extras.
-- Prefer one correct whole dish over a wrong or incomplete decomposition.
+User input: I ate dragon fruit pizza
+Output:
+dragon fruit pizza;250;19
+
+User input: I didn't eat anything
+Output:
+NO_FOOD
 
 {CATEGORY_BLOCK}
 """.strip()
@@ -95,7 +103,7 @@ def extract_foods_with_openrouter(text: str, model: str | None = None) -> dict:
         raise ValueError("Missing OPENROUTER_API_KEY in environment.")
 
     selected_model = model or DEFAULT_MODEL
-    print("DEBUG USER TEXT SENT TO MODEL:", repr(text))
+
     response = httpx.post(
         "https://openrouter.ai/api/v1/chat/completions",
         headers={

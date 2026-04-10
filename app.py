@@ -25,7 +25,7 @@ st.set_page_config(page_title="GymAura Nutrition Prototype", layout="wide")
 
 st.title("GymAura Nutrition Prototype")
 st.write(
-    "Flow: text (any language) → Gemma/OpenRouter → food;grams;category_id → category-aware matching → nutrition"
+    "Flow: text (any language) → Gemma/OpenRouter → food;value;category_id → matcher → nutrition"
 )
 
 dataset = get_dataset()
@@ -38,7 +38,8 @@ example_sentences = [
     "J'ai mangé du poulet avec du riz",
     "أكلت حمص",
     "أكلت بيتزا بيبروني",
-    "I had a croque-monsieur",
+    "I ate dragon fruit pizza",
+    "I had a caesar salad",
     "I didn't eat anything today",
 ]
 
@@ -86,12 +87,51 @@ if st.button("Run Prototype"):
         else:
             for idx, item in enumerate(result["items"], start=1):
                 with st.expander(f"Item {idx}: {item.get('food_text', 'Unknown')}"):
+                    st.write(f"**Food:** {item.get('food_text')}")
+
+                    if item.get("portions") is not None:
+                        st.write(f"**Portions:** {item.get('portions')}")
+                    if item.get("grams") is not None:
+                        st.write(f"**Grams:** {item.get('grams')} g")
+
+                    st.write(f"**Matched:** {item.get('matched')}")
+                    st.write(f"**Match type:** {item.get('match_type')}")
+                    st.write(f"**Match score:** {item.get('match_score')}")
+                    st.write(f"**Search scope:** {item.get('search_scope')}")
+                    st.write(f"**Normalized query:** {item.get('normalized_query')}")
+                    st.write(f"**Matched description:** {item.get('matched_description')}")
+                    st.write(f"**LLM category ID:** {item.get('llm_category_id')}")
+                    st.write(f"**LLM category name:** {item.get('llm_category_name')}")
+                    st.write(f"**Matched category:** {item.get('matched_category')}")
+                    st.write(f"**Dataset default portion grams:** {item.get('dataset_default_portion_grams')}")
+                    st.write(f"**Dataset default portion label:** {item.get('dataset_default_portion_label')}")
+
+                    nutrition_source = item.get("nutrition_source")
+                    if nutrition_source == "dataset":
+                        st.success("Nutrition source: Dataset")
+                    else:
+                        st.warning("Nutrition source: AI estimate")
+
+                    if not item.get("matched"):
+                        st.warning("This food was not found in the dataset and was added to the review queue.")
+
+                    if item.get("needs_clarification"):
+                        st.info("This item may need clarification or review.")
+
+                    st.subheader("Nutrition")
+                    st.json(item.get("nutrition"))
+
+                    if item.get("fallback_nutrition_raw_output"):
+                        st.subheader("Fallback Nutrition Raw Output")
+                        st.code(item.get("fallback_nutrition_raw_output"), language="text")
+
+                    st.subheader("Full Item Debug")
                     st.json(item)
 
         st.subheader("Meal Totals")
         st.json(result["totals"])
 
-        st.subheader("Raw Model Output")
+        st.subheader("Raw Extraction Output")
         st.code(result["ai_raw_output"], language="text")
 
         if result.get("parse_errors"):

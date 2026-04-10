@@ -5,7 +5,7 @@ from typing import Any
 from src.data_prep import CATEGORY_ID_TO_NAME, CATEGORY_NAME_TO_ID
 
 
-def _parse_grams(value: str | None) -> float | None:
+def _parse_value(value: str | None) -> float | None:
     if value is None:
         return None
 
@@ -17,10 +17,10 @@ def _parse_grams(value: str | None) -> float | None:
     cleaned = cleaned.replace("g", "").strip()
 
     try:
-        grams = float(cleaned)
-        if grams <= 0:
+        parsed = float(cleaned)
+        if parsed <= 0:
             return None
-        return grams
+        return parsed
     except ValueError:
         return None
 
@@ -45,11 +45,15 @@ def _parse_category(value: str | None) -> tuple[int | None, str | None]:
 def parse_semicolon_output(raw_text: str) -> dict[str, Any]:
     """
     Expected output:
-        chicken breast;180;18
-        rice;150;7
-        olive oil;10;10
+        pizza;1;19
+        chicken breast;1;18
+        dragon fruit pizza;250;19
 
-    Or:
+    Meaning:
+        value = portions if food is known
+        value = grams if food is unknown
+
+    Special case:
         NO_FOOD
     """
     text = (raw_text or "").strip()
@@ -84,19 +88,19 @@ def parse_semicolon_output(raw_text: str) -> dict[str, Any]:
             )
             continue
 
-        food_text, grams_text, category_text = parts
+        food_text, value_text, category_text = parts
 
         if not food_text:
             parse_errors.append(f"Line {idx}: missing food_text -> {line}")
             continue
 
-        grams = _parse_grams(grams_text)
+        value = _parse_value(value_text)
         category_id, category_name = _parse_category(category_text)
 
         items.append(
             {
                 "food_text": food_text.lower().strip(),
-                "grams": grams,
+                "value": value,
                 "category_id": category_id,
                 "category_name": category_name,
             }
