@@ -25,12 +25,12 @@ st.set_page_config(page_title="GymAura Nutrition Prototype", layout="wide")
 
 st.title("GymAura Nutrition Prototype")
 st.write(
-    "Flow: text (any language) → Gemma/OpenRouter → food;value;category_id → matcher → nutrition"
+    "Flow: text (any language) → Gemma/OpenRouter extraction → matcher → dataset nutrition or LLM fallback"
 )
 
 dataset = get_dataset()
 
-model = st.text_input("OpenRouter model", value="google/gemma-3-4b-it")
+model = st.text_input("OpenRouter extraction model", value="google/gemma-3-4b-it")
 save_unmatched = st.checkbox("Save unmatched / low-confidence items to review queue", value=True)
 
 example_sentences = [
@@ -40,6 +40,7 @@ example_sentences = [
     "أكلت بيتزا بيبروني",
     "I ate dragon fruit pizza",
     "I had a caesar salad",
+    "J'ai mangé un tagine et un verre de thé marocain",
     "I didn't eat anything today",
 ]
 
@@ -55,7 +56,7 @@ selected_example = st.selectbox(
 if st.button("Load Example"):
     st.session_state.meal_input = selected_example
 
-user_input = st.text_area(
+st.text_area(
     "Meal description",
     key="meal_input",
     height=120,
@@ -91,6 +92,7 @@ if st.button("Run Prototype"):
 
                     if item.get("portions") is not None:
                         st.write(f"**Portions:** {item.get('portions')}")
+
                     if item.get("grams") is not None:
                         st.write(f"**Grams:** {item.get('grams')} g")
 
@@ -109,8 +111,10 @@ if st.button("Run Prototype"):
                     nutrition_source = item.get("nutrition_source")
                     if nutrition_source == "dataset":
                         st.success("Nutrition source: Dataset")
+                    elif nutrition_source:
+                        st.warning(f"Nutrition source: {nutrition_source}")
                     else:
-                        st.warning("Nutrition source: AI estimate")
+                        st.warning("Nutrition source: Unknown")
 
                     if not item.get("matched"):
                         st.warning("This food was not found in the dataset and was added to the review queue.")
@@ -124,6 +128,11 @@ if st.button("Run Prototype"):
                     if item.get("fallback_nutrition_raw_output"):
                         st.subheader("Fallback Nutrition Raw Output")
                         st.code(item.get("fallback_nutrition_raw_output"), language="text")
+
+                    if item.get("fallback_estimated_cost_usd") is not None:
+                        st.write(
+                            f"**Fallback nutrition estimated cost:** ${item.get('fallback_estimated_cost_usd'):.8f}"
+                        )
 
                     st.subheader("Full Item Debug")
                     st.json(item)
@@ -139,12 +148,17 @@ if st.button("Run Prototype"):
             st.json(result["parse_errors"])
 
         if result.get("ai_usage") is not None:
-            st.subheader("Usage")
+            st.subheader("Extraction Usage")
             st.write(result["ai_usage"])
 
-            cost = result["ai_usage"].get("cost")
-            if cost is not None:
-                st.write(f"Cost: ${cost:.6f}")
+            if isinstance(result["ai_usage"], dict):
+                cost = result["ai_usage"].get("cost")
+                if cost is not None:
+                    st.write(f"**Extraction cost:** ${cost:.8f}")
+
+        if result.get("estimated_cost_usd") is not None:
+            st.subheader("Estimated Total Cost")
+            st.write(f"${result['estimated_cost_usd']:.8f}")
 
 st.subheader("Dataset Review Queue")
 
@@ -157,4 +171,6 @@ if PROPOSED_ROWS_PATH.exists():
         st.write(f"{len(review_df)} item(s) pending review")
         st.dataframe(review_df, use_container_width=True)
 else:
-    st.info("No proposed_rows.csv file yet. It will be created automatically when an unmatched or low-confidence item is logged.")
+    st.info(
+        "No proposed_rows.csv file yet. It will be created automatically when an unmatched or low-confidence item is logged."
+    )   

@@ -62,14 +62,16 @@ Meaning of value:
 
 Rules:
 1. NEVER decompose dishes, recipes, or prepared meals.
-2. Always keep recipes / dishes / branded foods / simple foods as ONE item.
+2. Always keep dishes / recipes / branded foods / simple foods as ONE item.
 3. Always use English food names.
 4. Always output a category_id from the list below.
 5. If the food is common or likely known in a food database, estimate portions.
-6. If the food is uncommon, very specific, or likely not in a food database, estimate grams instead.
-7. If the user ate nothing, return exactly:
+6. If the food is uncommon, very specific, regional, or likely not in a food database, estimate REALISTIC grams instead.
+7. For unknown foods, NEVER return tiny weights like 1g, 2g, or 5g unless the food is clearly a condiment, spice, or garnish.
+8. For meals, drinks, and plated foods, use realistic serving-level gram estimates.
+9. If the user ate nothing, return exactly:
 NO_FOOD
-8. Output only valid semicolon-separated lines.
+10. Output only valid semicolon-separated lines.
 
 Examples:
 
@@ -89,6 +91,11 @@ hummus;1;14
 User input: I ate dragon fruit pizza
 Output:
 dragon fruit pizza;250;19
+
+User input: J'ai mangé un tagine et un verre de thé marocain
+Output:
+tagine;350;15
+moroccan tea;250;5
 
 User input: I didn't eat anything
 Output:

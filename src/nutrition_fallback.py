@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import os
+import re
 
-import httpx
 from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-DEFAULT_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemma-3-4b-it")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+DEFAULT_MODEL = os.getenv("OPENAI_NUTRITION_FALLBACK_MODEL", "gpt-5-mini")
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 SYSTEM_PROMPT = """
 You estimate nutrition values for one food item.
@@ -16,7 +19,7 @@ You estimate nutrition values for one food item.
 You will receive:
 - food name
 - estimated grams if available
-- original user meal description for context
+- original meal description for context
 
 Return ONLY this exact format:
 calories;protein_g;carbs_g;fat_g
@@ -31,12 +34,46 @@ Rules:
 """.strip()
 
 
-def _parse_nutrition_line(raw_text: str) -> dict | None:
-    text = (raw_text or "").strip()
-    parts = [p.strip() for p in text.split(";")]
-
+def _looks_numeric_line(line: str) -> bool:
+    parts = [p.strip() for p in line.split(";")]
     if len(parts) != 4:
+        return False
+
+    for part in parts:
+        try:
+            float(part)
+        except ValueError:
+            return False
+    return True
+
+
+def _parse_nutrition_line(raw_text: str) -> dict | None:
+    """
+    Robust parser:
+    - supports single-line responses
+    - supports header + data on two lines
+    - scans all lines and picks the first valid numeric line
+    """
+    text = (raw_text or "").strip()
+    if not text:
         return None
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+
+    # First try whole text as one line
+    if _looks_numeric_line(text):
+        line = text
+    else:
+        line = None
+        for candidate in lines:
+            if _looks_numeric_line(candidate):
+                line = candidate
+                break
+
+    if line is None:
+        return None
+
+    parts = [p.strip() for p in line.split(";")]
 
     try:
         return {
@@ -49,14 +86,47 @@ def _parse_nutrition_line(raw_text: str) -> dict | None:
         return None
 
 
+def _estimate_openai_cost_usd(usage) -> float | None:
+    """
+    Keep this lightweight and safe.
+    If usage structure does not expose token counts in the expected way,
+    just return None.
+    """
+    if usage is None:
+        return None
+
+    # Some SDK responses expose usage as an object, others as dict-like
+    try:
+        input_tokens = getattr(usage, "input_tokens", None)
+        output_tokens = getattr(usage, "output_tokens", None)
+        if input_tokens is None and hasattr(usage, "to_dict"):
+            usage_dict = usage.to_dict()
+            input_tokens = usage_dict.get("input_tokens")
+            output_tokens = usage_dict.get("output_tokens")
+    except Exception:
+        input_tokens = None
+        output_tokens = None
+
+    # Rough placeholder based on your supervisor’s requested budget envelope.
+    # Replace later with exact model pricing if you want stricter accounting.
+    if input_tokens is None or output_tokens is None:
+        return None
+
+    # Conservative simple estimate in USD:
+    # input: $0.30 / 1M tokens
+    # output: $0.80 / 1M tokens
+    cost = (input_tokens / 1_000_000) * 0.30 + (output_tokens / 1_000_000) * 0.80
+    return round(cost, 8)
+
+
 def estimate_nutrition_with_llm(
     food_text: str,
     grams: float | None,
     original_text: str,
     model: str | None = None,
 ) -> dict:
-    if not OPENROUTER_API_KEY:
-        raise ValueError("Missing OPENROUTER_API_KEY in environment.")
+    if not OPENAI_API_KEY:
+        raise ValueError("Missing OPENAI_API_KEY in environment.")
 
     selected_model = model or DEFAULT_MODEL
 
@@ -66,38 +136,18 @@ Estimated grams: {grams if grams is not None else "unknown"}
 Original meal description: {original_text}
 """.strip()
 
-    response = httpx.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": selected_model,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            "temperature": 0,
-            "max_tokens": 80,
-        },
-        timeout=60.0,
+    response = client.responses.create(
+        model=selected_model,
+        input=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
     )
 
-    response.raise_for_status()
-    payload = response.json()
-
-    raw_output = (
-        payload.get("choices", [{}])[0]
-        .get("message", {})
-        .get("content", "")
-        .strip()
-    )
-
+    raw_output = getattr(response, "output_text", "") or ""
     parsed = _parse_nutrition_line(raw_output)
 
     if parsed is None:
-        # emergency fallback: never return None to user
         parsed = {
             "calories": 0.0,
             "protein_g": 0.0,
@@ -105,9 +155,13 @@ Original meal description: {original_text}
             "fat_g": 0.0,
         }
 
+    usage = getattr(response, "usage", None)
+    estimated_cost_usd = _estimate_openai_cost_usd(usage)
+
     return {
         "nutrition": parsed,
         "raw_output": raw_output,
-        "usage": payload.get("usage"),
+        "usage": usage,
+        "estimated_cost_usd": estimated_cost_usd,
         "model": selected_model,
     }

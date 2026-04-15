@@ -34,14 +34,14 @@ ALIASES = {
     "ground beef": "beef",
 }
 
-# Strong negative hints for generic foods that often match the wrong processed item
 NEGATIVE_HINTS = {
     "chicken": {"spread", "salad", "luncheon", "sausage"},
     "beef": {"spread", "sausage"},
     "turkey": {"spread", "sausage"},
     "pizza": {"roll", "rolls", "bite", "bites", "snack", "frozen"},
     "bread": {"stuffing", "crumb", "cracker"},
-    "tea": {"mix", "powder", "ready"},
+    "tea": {"steak", "meat", "beef"},  # extra safety
+    "caesar salad": {"dressing"},
 }
 
 GENERIC_SINGLE_TOKEN_FOODS = {
@@ -92,12 +92,11 @@ def apply_penalties(query: str, candidate: str, base_score: float) -> float:
     query_tokens = query.split()
     candidate_tokens = lowered.split()
 
-    # Strong penalty for clearly wrong processed variants
     for key, banned_words in NEGATIVE_HINTS.items():
-        if key in query and any(word in candidate_tokens for word in banned_words):
-            base_score -= 35.0
+        if key == query or key in query:
+            if any(word in candidate_tokens for word in banned_words):
+                base_score -= 40.0
 
-    # Important: generic one-word foods should not match long weird variants too easily
     if len(query_tokens) == 1 and query_tokens[0] in GENERIC_SINGLE_TOKEN_FOODS:
         extra_tokens = [tok for tok in candidate_tokens if tok != query_tokens[0]]
         if len(extra_tokens) >= 2:
@@ -107,12 +106,15 @@ def apply_penalties(query: str, candidate: str, base_score: float) -> float:
 
 
 def is_safe_generic_match(query: str, candidate: str) -> bool:
-    """
-    Prevent generic one-word queries like 'pizza' from matching
-    things like 'pizza rolls, frozen, unprepared'.
-    """
     query_tokens = query.split()
     candidate_tokens = candidate.split()
+
+    # Strong protection for known phrase collisions
+    if query == "caesar salad" and "dressing" in candidate_tokens:
+        return False
+
+    if query == "tea" and "steak" in candidate_tokens:
+        return False
 
     if len(query_tokens) != 1:
         return True
@@ -122,16 +124,13 @@ def is_safe_generic_match(query: str, candidate: str) -> bool:
     if query_token not in GENERIC_SINGLE_TOKEN_FOODS:
         return True
 
-    # Exact one-token match is always safe
     if candidate == query:
         return True
 
-    # If candidate contains strong bad modifiers, reject
     banned = NEGATIVE_HINTS.get(query_token, set())
     if any(tok in banned for tok in candidate_tokens):
         return False
 
-    # If candidate is much longer than query, reject for generic foods
     extra_tokens = [tok for tok in candidate_tokens if tok != query_token]
     if len(extra_tokens) >= 2:
         return False
@@ -155,13 +154,11 @@ def _build_result(row, query: str, matched: bool, match_type: str | None, score:
 def _match_in_subset(query: str, subset, fuzzy_threshold: int = 84, strict_generic: bool = False) -> dict:
     query_tokens = set(query.split())
 
-    # 1) Exact clean match
     exact_matches = subset[subset["clean_description"] == query]
     if len(exact_matches) > 0:
         row = exact_matches.iloc[0]
         return _build_result(row, query, True, "exact", 100.0)
 
-    # 2) Startswith match with strong length control
     startswith_candidates = subset[subset["clean_description"].str.startswith(query + " ", na=False)]
     if len(startswith_candidates) > 0:
         safe_rows = []
@@ -179,7 +176,6 @@ def _match_in_subset(query: str, subset, fuzzy_threshold: int = 84, strict_gener
             row = safe_rows[0]
             return _build_result(row, query, True, "startswith", 96.0)
 
-    # 3) Token overlap
     best_idx = None
     best_score = -1.0
     best_rank = (-1, -1, -1, float("-inf"))
@@ -203,7 +199,6 @@ def _match_in_subset(query: str, subset, fuzzy_threshold: int = 84, strict_gener
         row = subset.loc[best_idx]
         return _build_result(row, query, True, "token_overlap", best_score)
 
-    # 4) Fuzzy fallback — but be strict for generic single-word foods
     choices = subset["clean_description"].tolist()
     best_match = process.extractOne(query, choices, scorer=fuzz.token_sort_ratio)
 
@@ -242,7 +237,6 @@ def match_food_to_dataset(
     query_tokens = query.split()
     strict_generic = len(query_tokens) == 1 and query_tokens[0] in GENERIC_SINGLE_TOKEN_FOODS
 
-    # 1) Category-first search
     if category_id is not None and category_id in CATEGORY_ID_TO_NAME:
         category_subset = dataset[dataset["category_id"] == category_id]
 
@@ -257,7 +251,6 @@ def match_food_to_dataset(
                 category_match["search_scope"] = "category_first"
                 return category_match
 
-    # 2) Global fallback
     global_match = _match_in_subset(
         query,
         dataset,
@@ -265,8 +258,6 @@ def match_food_to_dataset(
         strict_generic=strict_generic,
     )
 
-    # 3) If this is a generic one-item food and global match changes the category,
-    # be conservative and reject the match
     if global_match["matched"] and strict_generic and category_id is not None:
         matched_category_id = global_match.get("matched_category_id")
         if matched_category_id is not None and matched_category_id != category_id:
