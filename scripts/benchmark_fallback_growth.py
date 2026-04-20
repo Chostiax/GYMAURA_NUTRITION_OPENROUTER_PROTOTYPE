@@ -44,7 +44,10 @@ def score_case(case: dict, parsed: dict | None) -> dict:
 
     nutrition = parsed.get("nutrition") or {}
     calories = nutrition.get("calories")
-    calorie_score = 1.0 if calories is not None and case["expected_calories_min"] <= calories <= case["expected_calories_max"] else 0.0
+
+    calorie_score = 0.0
+    if calories is not None and case["expected_calories_min"] <= calories <= case["expected_calories_max"]:
+        calorie_score = 1.0
 
     total_score = canonical_score + category_score + calorie_score
 
@@ -56,62 +59,120 @@ def score_case(case: dict, parsed: dict | None) -> dict:
     }
 
 
-def run_provider(provider: str) -> list[dict]:
-    rows = []
-
-    for case in BENCHMARK_CASES:
-        result = enrich_unmatched_food_with_llm(
-            food_text=case["food_text"],
-            grams=case["grams"],
-            original_text=case["input"],
-            provider=provider,
-            model=None,  # always use provider default
-            category_id=case.get("expected_category_id"),
-            category_name=case.get("expected_category_name"),
-        )
-
-        parsed = result.get("parsed")
-        score = score_case(case, parsed)
-
-        rows.append(
-            {
-                "provider": provider,
-                "case_id": case["id"],
-                "input": case["input"],
-                "food_text": case["food_text"],
-                "grams_input": case["grams"],
-                "expected_canonical": case["expected_canonical"],
-                "expected_category_id": case["expected_category_id"],
-                "expected_calories_min": case["expected_calories_min"],
-                "expected_calories_max": case["expected_calories_max"],
-                "got_canonical": parsed.get("canonical_food_text") if parsed else None,
-                "got_category_id": parsed.get("category_id") if parsed else None,
-                "got_grams": parsed.get("grams") if parsed else None,
-                "got_calories": (parsed.get("nutrition") or {}).get("calories") if parsed else None,
-                "canonical_score": score["canonical_score"],
-                "category_score": score["category_score"],
-                "calorie_score": score["calorie_score"],
-                "total_score": score["total_score"],
-                "estimated_cost_usd": result.get("estimated_cost_usd"),
-                "raw_output": result.get("raw_output"),
-                "model": result.get("model"),
-                "used_heuristic_backup": result.get("used_heuristic_backup", False),
-            }
-        )
-
-    return rows
-
-
-def write_csv(rows: list[dict]) -> None:
-    if not rows:
-        return
+def init_csv() -> list[str]:
+    fieldnames = [
+        "provider",
+        "case_id",
+        "input",
+        "food_text",
+        "grams_input",
+        "expected_canonical",
+        "expected_category_id",
+        "expected_calories_min",
+        "expected_calories_max",
+        "got_canonical",
+        "got_category_id",
+        "got_grams",
+        "got_calories",
+        "canonical_score",
+        "category_score",
+        "calorie_score",
+        "total_score",
+        "estimated_cost_usd",
+        "raw_output",
+        "model",
+        "used_repair_pass",
+        "used_second_attempt",
+        "success",
+        "error",
+    ]
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-
     with OUTPUT_PATH.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(rows)
+
+    return fieldnames
+
+
+def append_row(row: dict, fieldnames: list[str]) -> None:
+    with OUTPUT_PATH.open("a", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writerow(row)
+
+
+def run_provider(provider: str, fieldnames: list[str]) -> list[dict]:
+    rows = []
+
+    print(f"\nRunning provider: {provider}", flush=True)
+
+    for idx, case in enumerate(BENCHMARK_CASES, start=1):
+        print(f"[{provider}] Case {idx}/{len(BENCHMARK_CASES)} -> {case['id']}", flush=True)
+
+        parsed = None
+        raw_output = None
+        model = None
+        estimated_cost_usd = None
+        used_repair_pass = False
+        used_second_attempt = False
+        success = False
+        error = None
+
+        try:
+            result = enrich_unmatched_food_with_llm(
+                food_text=case["food_text"],
+                grams=case["grams"],
+                original_text=case["input"],
+                provider=provider,
+                model=None,
+                category_id=case.get("expected_category_id"),
+                category_name=case.get("expected_category_name"),
+            )
+
+            parsed = result.get("parsed")
+            raw_output = result.get("raw_output")
+            model = result.get("model")
+            estimated_cost_usd = result.get("estimated_cost_usd")
+            used_repair_pass = result.get("used_repair_pass", False)
+            used_second_attempt = result.get("used_second_attempt", False)
+            success = parsed is not None
+
+        except Exception as e:
+            error = str(e)
+
+        score = score_case(case, parsed)
+
+        row = {
+            "provider": provider,
+            "case_id": case["id"],
+            "input": case["input"],
+            "food_text": case["food_text"],
+            "grams_input": case["grams"],
+            "expected_canonical": case["expected_canonical"],
+            "expected_category_id": case["expected_category_id"],
+            "expected_calories_min": case["expected_calories_min"],
+            "expected_calories_max": case["expected_calories_max"],
+            "got_canonical": parsed.get("canonical_food_text") if parsed else None,
+            "got_category_id": parsed.get("category_id") if parsed else None,
+            "got_grams": parsed.get("grams") if parsed else None,
+            "got_calories": (parsed.get("nutrition") or {}).get("calories") if parsed else None,
+            "canonical_score": score["canonical_score"],
+            "category_score": score["category_score"],
+            "calorie_score": score["calorie_score"],
+            "total_score": score["total_score"],
+            "estimated_cost_usd": estimated_cost_usd,
+            "raw_output": raw_output,
+            "model": model,
+            "used_repair_pass": used_repair_pass,
+            "used_second_attempt": used_second_attempt,
+            "success": success,
+            "error": error,
+        }
+
+        rows.append(row)
+        append_row(row, fieldnames)
+
+    return rows
 
 
 def print_summary(rows: list[dict], provider: str) -> None:
@@ -119,41 +180,40 @@ def print_summary(rows: list[dict], provider: str) -> None:
     if not provider_rows:
         return
 
+    total_cases = len(provider_rows)
+    success_count = sum(1 for r in provider_rows if r["success"])
+    failure_count = total_cases - success_count
     total_score = sum(r["total_score"] for r in provider_rows)
-    max_score = len(provider_rows) * 4.0
-    avg_score = total_score / len(provider_rows)
+    avg_score = total_score / total_cases if total_cases else 0.0
     total_cost = sum((r["estimated_cost_usd"] or 0.0) for r in provider_rows)
+    repair_count = sum(1 for r in provider_rows if r["used_repair_pass"])
+    second_attempt_count = sum(1 for r in provider_rows if r["used_second_attempt"])
 
     print("=" * 70)
     print(f"PROVIDER: {provider}")
-    print(f"Cases: {len(provider_rows)}")
+    print(f"Cases: {total_cases}")
+    print(f"Successful cases: {success_count}")
+    print(f"Failed cases: {failure_count}")
     print(f"Average score: {avg_score:.2f} / 4.00")
-    print(f"Total score: {total_score:.2f} / {max_score:.2f}")
+    print(f"Total score: {total_score:.2f}")
     print(f"Estimated total cost: ${total_cost:.8f}")
-
-    worst = sorted(provider_rows, key=lambda r: r["total_score"])[:5]
-    print("Worst 5 cases:")
-    for row in worst:
-        print(
-            f"- {row['case_id']} | score={row['total_score']} | "
-            f"model={row['model']} | input={row['input']}"
-        )
+    print(f"Used second attempt: {second_attempt_count}")
+    print(f"Used repair pass: {repair_count}")
 
 
 def main():
+    fieldnames = init_csv()
     all_rows = []
 
     for provider in ["openai", "openrouter_deepseek"]:
-        rows = run_provider(provider)
+        rows = run_provider(provider, fieldnames)
         all_rows.extend(rows)
-
-    write_csv(all_rows)
 
     for provider in ["openai", "openrouter_deepseek"]:
         print_summary(all_rows, provider)
 
     print("=" * 70)
-    print(f"Detailed results written to: {OUTPUT_PATH}")
+    print(f"Detailed results written to: {OUTPUT_PATH.resolve()}")
 
 
 if __name__ == "__main__":

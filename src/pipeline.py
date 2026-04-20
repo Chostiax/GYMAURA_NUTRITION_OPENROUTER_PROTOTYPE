@@ -32,6 +32,11 @@ def _resolve_known_food_grams(portions: float | None, dataset_row) -> tuple[floa
 
 
 def _apply_unmatched_grams_guard(grams: float | None, category_id: int | None) -> tuple[float | None, str | None]:
+    """
+    For unmatched foods:
+    - value should already be grams according to your new rule
+    - we still guard against absurd tiny values like 1g for a full dish
+    """
     if grams is None:
         return DEFAULT_UNMATCHED_MIN_GRAMS, "minimum_unknown_default"
 
@@ -79,6 +84,15 @@ def _reject_match(match_result: dict, reason: str) -> dict:
     }
 
 
+def _build_zero_totals() -> dict:
+    return {
+        "calories": 0.0,
+        "protein_g": 0.0,
+        "carbs_g": 0.0,
+        "fat_g": 0.0,
+    }
+
+
 def run_pipeline(
     text: str,
     dataset,
@@ -93,12 +107,7 @@ def run_pipeline(
         return {
             "input": text,
             "items": [],
-            "totals": {
-                "calories": 0.0,
-                "protein_g": 0.0,
-                "carbs_g": 0.0,
-                "fat_g": 0.0,
-            },
+            "totals": _build_zero_totals(),
             "ai_usage": extraction.get("usage"),
             "ai_raw_output": extraction.get("raw_output"),
             "parse_errors": extraction.get("parse_errors"),
@@ -136,7 +145,9 @@ def run_pipeline(
         fallback_estimated_cost_usd = None
         fallback_provider_used = None
         fallback_model_used = None
-        fallback_used_heuristic_backup = False
+        fallback_used_repair_pass = False
+        fallback_used_second_attempt = False
+        fallback_error = None
 
         raw_value = item.get("value")
         portions = None
@@ -162,28 +173,35 @@ def run_pipeline(
             nutrition_source = "dataset"
 
             if nutrition is None:
-                fallback = estimate_nutrition_with_llm(
-                    food_text=item["food_text"],
-                    grams=grams,
-                    original_text=text,
-                    provider=smart_provider,
-                    model=smart_model,
-                    category_id=item.get("category_id"),
-                    category_name=item.get("category_name"),
-                )
+                try:
+                    fallback = estimate_nutrition_with_llm(
+                        food_text=item["food_text"],
+                        grams=grams,
+                        original_text=text,
+                        provider=smart_provider,
+                        model=smart_model,
+                        category_id=item.get("category_id"),
+                        category_name=item.get("category_name"),
+                    )
 
-                nutrition = fallback["nutrition"]
-                nutrition_source = (
-                    "llm_fallback_after_dataset_failure_backup"
-                    if fallback.get("used_heuristic_backup")
-                    else "llm_fallback_after_dataset_failure"
-                )
-                fallback_raw_output = fallback.get("raw_output")
-                fallback_estimated_cost_usd = fallback.get("estimated_cost_usd") or 0.0
-                fallback_provider_used = fallback.get("provider")
-                fallback_model_used = fallback.get("model")
-                fallback_used_heuristic_backup = fallback.get("used_heuristic_backup", False)
-                fallback_cost_total += fallback_estimated_cost_usd
+                    nutrition = fallback["nutrition"]
+                    fallback_raw_output = fallback.get("raw_output")
+                    fallback_estimated_cost_usd = fallback.get("estimated_cost_usd") or 0.0
+                    fallback_provider_used = fallback.get("provider")
+                    fallback_model_used = fallback.get("model")
+                    fallback_used_repair_pass = fallback.get("used_repair_pass", False)
+                    fallback_used_second_attempt = fallback.get("used_second_attempt", False)
+                    fallback_cost_total += fallback_estimated_cost_usd
+
+                    nutrition_source = (
+                        "llm_fallback_after_dataset_failure_repair"
+                        if fallback_used_repair_pass
+                        else "llm_fallback_after_dataset_failure"
+                    )
+                except Exception as e:
+                    nutrition = None
+                    nutrition_source = "llm_failure_after_dataset_failure"
+                    fallback_error = str(e)
 
             if grams is None:
                 needs_clarification = True
@@ -199,7 +217,7 @@ def run_pipeline(
                     status="low_confidence_match",
                     fallback_provider=fallback_provider_used,
                     fallback_model=fallback_model_used,
-                    fallback_nutrition=nutrition if fallback_raw_output is not None else None,
+                    fallback_nutrition=nutrition if nutrition_source != "dataset" else None,
                     fallback_raw_output=fallback_raw_output,
                 )
 
@@ -210,28 +228,32 @@ def run_pipeline(
             )
             needs_clarification = True
 
-            fallback = estimate_nutrition_with_llm(
-                food_text=item["food_text"],
-                grams=grams,
-                original_text=text,
-                provider=smart_provider,
-                model=smart_model,
-                category_id=item.get("category_id"),
-                category_name=item.get("category_name"),
-            )
+            try:
+                fallback = estimate_nutrition_with_llm(
+                    food_text=item["food_text"],
+                    grams=grams,
+                    original_text=text,
+                    provider=smart_provider,
+                    model=smart_model,
+                    category_id=item.get("category_id"),
+                    category_name=item.get("category_name"),
+                )
 
-            nutrition = fallback["nutrition"]
-            nutrition_source = (
-                "llm_fallback_backup"
-                if fallback.get("used_heuristic_backup")
-                else "llm_fallback"
-            )
-            fallback_raw_output = fallback.get("raw_output")
-            fallback_estimated_cost_usd = fallback.get("estimated_cost_usd") or 0.0
-            fallback_provider_used = fallback.get("provider")
-            fallback_model_used = fallback.get("model")
-            fallback_used_heuristic_backup = fallback.get("used_heuristic_backup", False)
-            fallback_cost_total += fallback_estimated_cost_usd
+                nutrition = fallback["nutrition"]
+                fallback_raw_output = fallback.get("raw_output")
+                fallback_estimated_cost_usd = fallback.get("estimated_cost_usd") or 0.0
+                fallback_provider_used = fallback.get("provider")
+                fallback_model_used = fallback.get("model")
+                fallback_used_repair_pass = fallback.get("used_repair_pass", False)
+                fallback_used_second_attempt = fallback.get("used_second_attempt", False)
+                fallback_cost_total += fallback_estimated_cost_usd
+
+                nutrition_source = "llm_fallback_repair" if fallback_used_repair_pass else "llm_fallback"
+
+            except Exception as e:
+                nutrition = None
+                nutrition_source = "llm_failure"
+                fallback_error = str(e)
 
             if save_unmatched_candidates:
                 append_proposed_row(
@@ -241,7 +263,7 @@ def run_pipeline(
                     category_name=item.get("category_name"),
                     source_input=text,
                     match_score=match_result.get("score", 0.0),
-                    status="pending_review",
+                    status="pending_review" if nutrition is not None else "pending_review_llm_failed",
                     fallback_provider=fallback_provider_used,
                     fallback_model=fallback_model_used,
                     fallback_nutrition=nutrition,
@@ -278,12 +300,16 @@ def run_pipeline(
                 "fallback_estimated_cost_usd": fallback_estimated_cost_usd,
                 "fallback_provider": fallback_provider_used,
                 "fallback_model": fallback_model_used,
-                "fallback_used_heuristic_backup": fallback_used_heuristic_backup,
+                "fallback_used_repair_pass": fallback_used_repair_pass,
+                "fallback_used_second_attempt": fallback_used_second_attempt,
+                "fallback_error": fallback_error,
                 "needs_clarification": needs_clarification,
             }
         )
 
-    totals = sum_nutrition(final_items)
+    items_with_nutrition = [item for item in final_items if item.get("nutrition") is not None]
+
+    totals = sum_nutrition(items_with_nutrition) if items_with_nutrition else _build_zero_totals()
 
     total_estimated_cost_usd = None
     if extraction_cost is not None or fallback_cost_total > 0:
@@ -298,4 +324,4 @@ def run_pipeline(
         "parse_errors": extraction.get("parse_errors"),
         "model": extraction.get("model"),
         "estimated_cost_usd": total_estimated_cost_usd,
-    } 
+    }
