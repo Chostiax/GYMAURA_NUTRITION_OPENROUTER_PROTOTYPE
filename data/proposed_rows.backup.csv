@@ -1,0 +1,3 @@
+timestamp,raw_food_text,normalized_food_text,grams,category_id,category_name,source_input,match_score,status
+2026-04-20T02:22:26.784897,tagine,tagine,350.0,15,"Meals, Entrees, and Side Dishes",J'ai mangé un tagine et un verre de thé marocain,0.0,pending_review
+2026-04-20T02:22:29.067650,moroccan tea,moroccan tea,250.0,5,Beverages,J'ai mangé un tagine et un verre de thé marocain,0.0,pending_review

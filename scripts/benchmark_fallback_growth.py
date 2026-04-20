@@ -8,7 +8,6 @@ from pathlib import Path
 from src.review_enricher import enrich_unmatched_food_with_llm
 from tests.fallback_growth_benchmark_cases import BENCHMARK_CASES
 
-
 OUTPUT_PATH = Path("benchmark_fallback_growth_results.csv")
 
 
@@ -31,7 +30,7 @@ def score_case(case: dict, parsed: dict | None) -> dict:
         }
 
     expected_name = normalize_text(case["expected_canonical"])
-    got_name = normalize_text(parsed["canonical_food_text"])
+    got_name = normalize_text(parsed.get("canonical_food_text"))
 
     if got_name == expected_name:
         canonical_score = 2.0
@@ -40,10 +39,12 @@ def score_case(case: dict, parsed: dict | None) -> dict:
     else:
         canonical_score = 0.0
 
-    category_score = 1.0 if parsed["category_id"] == case["expected_category_id"] else 0.0
+    got_category_id = parsed.get("category_id")
+    category_score = 1.0 if got_category_id == case["expected_category_id"] else 0.0
 
-    calories = parsed["nutrition"]["calories"]
-    calorie_score = 1.0 if case["expected_calories_min"] <= calories <= case["expected_calories_max"] else 0.0
+    nutrition = parsed.get("nutrition") or {}
+    calories = nutrition.get("calories")
+    calorie_score = 1.0 if calories is not None and case["expected_calories_min"] <= calories <= case["expected_calories_max"] else 0.0
 
     total_score = canonical_score + category_score + calorie_score
 
@@ -64,33 +65,39 @@ def run_provider(provider: str) -> list[dict]:
             grams=case["grams"],
             original_text=case["input"],
             provider=provider,
+            model=None,  # always use provider default
+            category_id=case.get("expected_category_id"),
+            category_name=case.get("expected_category_name"),
         )
 
-        parsed = result["parsed"]
+        parsed = result.get("parsed")
         score = score_case(case, parsed)
 
-        rows.append({
-            "provider": provider,
-            "case_id": case["id"],
-            "input": case["input"],
-            "food_text": case["food_text"],
-            "grams_input": case["grams"],
-            "expected_canonical": case["expected_canonical"],
-            "expected_category_id": case["expected_category_id"],
-            "expected_calories_min": case["expected_calories_min"],
-            "expected_calories_max": case["expected_calories_max"],
-            "got_canonical": parsed["canonical_food_text"] if parsed else None,
-            "got_category_id": parsed["category_id"] if parsed else None,
-            "got_grams": parsed["grams"] if parsed else None,
-            "got_calories": parsed["nutrition"]["calories"] if parsed else None,
-            "canonical_score": score["canonical_score"],
-            "category_score": score["category_score"],
-            "calorie_score": score["calorie_score"],
-            "total_score": score["total_score"],
-            "estimated_cost_usd": result["estimated_cost_usd"],
-            "raw_output": result["raw_output"],
-            "model": result["model"],
-        })
+        rows.append(
+            {
+                "provider": provider,
+                "case_id": case["id"],
+                "input": case["input"],
+                "food_text": case["food_text"],
+                "grams_input": case["grams"],
+                "expected_canonical": case["expected_canonical"],
+                "expected_category_id": case["expected_category_id"],
+                "expected_calories_min": case["expected_calories_min"],
+                "expected_calories_max": case["expected_calories_max"],
+                "got_canonical": parsed.get("canonical_food_text") if parsed else None,
+                "got_category_id": parsed.get("category_id") if parsed else None,
+                "got_grams": parsed.get("grams") if parsed else None,
+                "got_calories": (parsed.get("nutrition") or {}).get("calories") if parsed else None,
+                "canonical_score": score["canonical_score"],
+                "category_score": score["category_score"],
+                "calorie_score": score["calorie_score"],
+                "total_score": score["total_score"],
+                "estimated_cost_usd": result.get("estimated_cost_usd"),
+                "raw_output": result.get("raw_output"),
+                "model": result.get("model"),
+                "used_heuristic_backup": result.get("used_heuristic_backup", False),
+            }
+        )
 
     return rows
 
@@ -115,7 +122,6 @@ def print_summary(rows: list[dict], provider: str) -> None:
     total_score = sum(r["total_score"] for r in provider_rows)
     max_score = len(provider_rows) * 4.0
     avg_score = total_score / len(provider_rows)
-
     total_cost = sum((r["estimated_cost_usd"] or 0.0) for r in provider_rows)
 
     print("=" * 70)
@@ -128,7 +134,10 @@ def print_summary(rows: list[dict], provider: str) -> None:
     worst = sorted(provider_rows, key=lambda r: r["total_score"])[:5]
     print("Worst 5 cases:")
     for row in worst:
-        print(f"- {row['case_id']} | score={row['total_score']} | input={row['input']}")
+        print(
+            f"- {row['case_id']} | score={row['total_score']} | "
+            f"model={row['model']} | input={row['input']}"
+        )
 
 
 def main():

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import csv
+import json
 import re
 import unicodedata
 from datetime import datetime
 from pathlib import Path
-
 
 PROPOSED_ROWS_PATH = Path("data/proposed_rows.csv")
 
@@ -19,6 +19,10 @@ HEADER = [
     "source_input",
     "match_score",
     "status",
+    "fallback_provider",
+    "fallback_model",
+    "fallback_nutrition_json",
+    "fallback_raw_output",
 ]
 
 
@@ -51,26 +55,6 @@ def _ensure_file_schema() -> None:
             writer.writerow(HEADER)
 
 
-def _row_already_exists(normalized_food_text: str, category_id: int | None) -> bool:
-    if not PROPOSED_ROWS_PATH.exists():
-        return False
-
-    with PROPOSED_ROWS_PATH.open("r", encoding="utf-8", newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            existing_norm = row.get("normalized_food_text", "").strip().lower()
-            existing_cat = row.get("category_id")
-            try:
-                existing_cat = int(existing_cat) if existing_cat not in (None, "", "None") else None
-            except Exception:
-                existing_cat = None
-
-            if existing_norm == normalized_food_text and existing_cat == category_id:
-                return True
-
-    return False
-
-
 def append_proposed_row(
     food_text: str,
     grams: float | None,
@@ -78,24 +62,48 @@ def append_proposed_row(
     category_name: str | None,
     source_input: str,
     match_score: float,
-) -> None:
+    status: str = "pending_review",
+    fallback_provider: str | None = None,
+    fallback_model: str | None = None,
+    fallback_nutrition: dict | None = None,
+    fallback_raw_output: str | None = None,
+) -> bool:
+    """
+    Deduplicate by normalized_food_text.
+    If already present, do not add another row.
+    Returns True if appended, False if skipped.
+    """
     _ensure_file_schema()
 
     normalized_food_text = _normalize_food_text_for_queue(food_text)
 
-    if _row_already_exists(normalized_food_text, category_id):
-        return
+    existing_normalized = set()
+    with PROPOSED_ROWS_PATH.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            existing_normalized.add((row.get("normalized_food_text") or "").strip())
+
+    if normalized_food_text in existing_normalized:
+        return False
+
+    row = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "raw_food_text": food_text,
+        "normalized_food_text": normalized_food_text,
+        "grams": "" if grams is None else round(float(grams), 2),
+        "category_id": "" if category_id is None else category_id,
+        "category_name": category_name or "",
+        "source_input": source_input,
+        "match_score": round(float(match_score or 0.0), 4),
+        "status": status,
+        "fallback_provider": fallback_provider or "",
+        "fallback_model": fallback_model or "",
+        "fallback_nutrition_json": json.dumps(fallback_nutrition or {}, ensure_ascii=False),
+        "fallback_raw_output": fallback_raw_output or "",
+    }
 
     with PROPOSED_ROWS_PATH.open("a", encoding="utf-8", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow([
-            datetime.utcnow().isoformat(),
-            food_text,
-            normalized_food_text,
-            grams,
-            category_id,
-            category_name,
-            source_input,
-            match_score,
-            "pending_review",
-        ])
+        writer = csv.DictWriter(f, fieldnames=HEADER)
+        writer.writerow(row)
+
+    return True

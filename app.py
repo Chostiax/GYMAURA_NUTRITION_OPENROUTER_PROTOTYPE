@@ -23,19 +23,7 @@ def load_review_queue():
     try:
         return pd.read_csv(PROPOSED_ROWS_PATH, engine="python", on_bad_lines="skip")
     except Exception:
-        return pd.DataFrame(
-            columns=[
-                "timestamp",
-                "raw_food_text",
-                "normalized_food_text",
-                "grams",
-                "category_id",
-                "category_name",
-                "source_input",
-                "match_score",
-                "status",
-            ]
-        )
+        return pd.DataFrame()
 
 
 @st.cache_data
@@ -50,29 +38,23 @@ def load_benchmark_results():
 
 
 st.set_page_config(page_title="GymAura Nutrition Prototype", layout="wide")
-
 st.title("GymAura Nutrition Prototype")
 st.write(
-    "Flow: text (any language) → Gemma/OpenRouter extraction → matcher → dataset nutrition or smart-model fallback"
+    "Flow: text (any language) → Gemma/OpenRouter extraction → matcher → dataset nutrition or fallback/growth LLM"
 )
 
 dataset = get_dataset()
 
-extraction_model = st.text_input("OpenRouter extraction model", value="google/gemma-3-4b-it")
+extraction_model = st.text_input(
+    "OpenRouter extraction model",
+    value="google/gemma-3-4b-it",
+)
 
 smart_provider = st.selectbox(
     "Fallback + dataset growth provider",
     ["openai", "openrouter_deepseek"],
     index=0,
 )
-
-smart_model_override = st.text_input(
-    "Optional smart model override",
-    value="",
-    placeholder="Leave blank to use .env default",
-)
-
-save_unmatched = st.checkbox("Save unmatched / low-confidence items to review queue", value=True)
 
 example_sentences = [
     "I had chicken with rice",
@@ -118,9 +100,9 @@ if st.button("Run Prototype"):
             text=current_input,
             dataset=dataset,
             model=extraction_model,
-            save_unmatched_candidates=save_unmatched,
+            save_unmatched_candidates=True,   # always on
             smart_provider=smart_provider,
-            smart_model=smart_model_override.strip() or None,
+            smart_model=None,                 # always use provider default from .env
         )
 
         st.subheader("Input")
@@ -154,11 +136,11 @@ if st.button("Run Prototype"):
 
                     nutrition_source = item.get("nutrition_source")
                     if nutrition_source == "dataset":
-                        st.success("Nutrition source: Dataset")
+                        st.success("Nutrition source: dataset")
                     elif nutrition_source:
                         st.warning(f"Nutrition source: {nutrition_source}")
                     else:
-                        st.warning("Nutrition source: Unknown")
+                        st.warning("Nutrition source: unknown")
 
                     if not item.get("matched"):
                         st.warning("This food was not found in the dataset and was added to the review queue.")
@@ -172,6 +154,12 @@ if st.button("Run Prototype"):
                     if item.get("fallback_nutrition_raw_output"):
                         st.subheader("Fallback Nutrition Raw Output")
                         st.code(item.get("fallback_nutrition_raw_output"), language="text")
+
+                    if item.get("fallback_provider"):
+                        st.write(f"**Fallback provider used:** {item.get('fallback_provider')}")
+
+                    if item.get("fallback_model"):
+                        st.write(f"**Fallback model used:** {item.get('fallback_model')}")
 
                     if item.get("fallback_estimated_cost_usd") is not None:
                         st.write(
@@ -205,30 +193,24 @@ if st.button("Run Prototype"):
             st.write(f"${result['estimated_cost_usd']:.8f}")
 
 st.subheader("Dataset Review Queue")
-
 if PROPOSED_ROWS_PATH.exists():
     review_df = load_review_queue()
-
     if review_df.empty:
         st.info("No items pending review.")
     else:
         st.write(f"{len(review_df)} item(s) pending review")
         st.dataframe(review_df, use_container_width=True)
 else:
-    st.info(
-        "No proposed_rows.csv file yet. It will be created automatically when an unmatched or low-confidence item is logged."
-    )
+    st.info("No proposed_rows.csv file yet. It will be created automatically.")
 
 st.subheader("Fallback / Growth Benchmark Results")
-
 benchmark_df = load_benchmark_results()
-
 if benchmark_df.empty:
     st.info("No benchmark results file found yet. Run: uv run python -m scripts.benchmark_fallback_growth")
 else:
     st.write(f"{len(benchmark_df)} benchmark row(s) loaded")
 
-    providers = sorted(benchmark_df["provider"].dropna().unique().tolist())
+    providers = sorted(benchmark_df["provider"].dropna().unique().tolist()) if "provider" in benchmark_df.columns else []
     selected_provider_filter = st.selectbox(
         "Filter benchmark provider",
         ["All"] + providers,
@@ -236,7 +218,7 @@ else:
     )
 
     filtered_df = benchmark_df.copy()
-    if selected_provider_filter != "All":
+    if selected_provider_filter != "All" and "provider" in filtered_df.columns:
         filtered_df = filtered_df[filtered_df["provider"] == selected_provider_filter]
 
     st.dataframe(filtered_df, use_container_width=True)
@@ -251,7 +233,9 @@ else:
                     "cases": len(provider_df),
                     "avg_total_score": round(provider_df["total_score"].mean(), 3),
                     "sum_total_score": round(provider_df["total_score"].sum(), 3),
-                    "estimated_total_cost_usd": round(provider_df["estimated_cost_usd"].fillna(0).sum(), 8),
+                    "estimated_total_cost_usd": round(provider_df["estimated_cost_usd"].fillna(0).sum(), 8)
+                    if "estimated_cost_usd" in provider_df.columns
+                    else 0.0,
                 }
             )
 
