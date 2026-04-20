@@ -1,0 +1,81 @@
+provider,case_id,input,food_text,grams_input,expected_canonical,expected_category_id,expected_calories_min,expected_calories_max,got_canonical,got_category_id,got_grams,got_calories,canonical_score,category_score,calorie_score,total_score,estimated_cost_usd,raw_output,model
+openai,C01,J'ai mangé un tagine,tagine,350,tagine,15,250,800,,,,,0.0,0.0,0.0,0.0,0.00029775,,gpt-5-mini
+openai,C02,J'ai bu un verre de thé marocain,moroccan tea,250,moroccan tea,5,0,120,,,,,0.0,0.0,0.0,0.0,0.0002985,,gpt-5-mini
+openai,C03,I ate a shawarma,shawarma,300,shawarma,15,300,900,,,,,0.0,0.0,0.0,0.0,0.00029725,,gpt-5-mini
+openai,C04,I had bubble tea,bubble tea,350,bubble tea,5,120,400,,,,,0.0,0.0,0.0,0.0,0.000297,,gpt-5-mini
+openai,C05,J'ai mangé une salade niçoise,salade nicoise,320,nicoise salad,15,250,700,,,,,0.0,0.0,0.0,0.0,0.00029875,,gpt-5-mini
+openai,C06,I had a caesar salad,caesar salad,280,caesar salad,15,200,700,,,,,0.0,0.0,0.0,0.0,0.00029775,,gpt-5-mini
+openai,C07,I ate beef dumplings,beef dumplings,300,beef dumplings,15,250,900,,,,,0.0,0.0,0.0,0.0,0.0002975,,gpt-5-mini
+openai,C08,I ate dragon fruit pizza,dragon fruit pizza,250,dragon fruit pizza,19,200,700,,,,,0.0,0.0,0.0,0.0,0.0002975,,gpt-5-mini
+openai,C09,I had a poké bowl,poke bowl,350,poke bowl,15,300,800,,,,,0.0,0.0,0.0,0.0,0.0002975,,gpt-5-mini
+openai,C10,I had biryani,biryani,350,biryani,15,350,900,,,,,0.0,0.0,0.0,0.0,0.0002975,,gpt-5-mini
+openai,C11,I had a sushi burrito,sushi burrito,300,sushi burrito,15,250,800,,,,,0.0,0.0,0.0,0.0,0.00029775,,gpt-5-mini
+openai,C12,I had tres leches cake,tres leches cake,150,tres leches cake,24,250,700,,,,,0.0,0.0,0.0,0.0,0.000298,,gpt-5-mini
+openai,C13,I had a croque-monsieur,croque monsieur,180,croque monsieur,15,250,700,,,,,0.0,0.0,0.0,0.0,0.00029825,,gpt-5-mini
+openai,C14,I ate jollof rice,jollof rice,300,jollof rice,15,250,700,,,,,0.0,0.0,0.0,0.0,0.000298,,gpt-5-mini
+openai,C15,I had pad thai,pad thai,350,pad thai,15,300,900,,,,,0.0,0.0,0.0,0.0,0.000297,,gpt-5-mini
+openai,C16,I had pho bo,pho bo,450,pho bo,15,250,800,,,,,0.0,0.0,0.0,0.0,0.000297,,gpt-5-mini
+openai,C17,I ate ramen,ramen,450,ramen,15,300,900,,,,,0.0,0.0,0.0,0.0,0.0002965,,gpt-5-mini
+openai,C18,I had quesabirria tacos,quesabirria tacos,280,quesabirria tacos,19,300,900,,,,,0.0,0.0,0.0,0.0,0.0002985,,gpt-5-mini
+openai,C19,I ate a falafel wrap,falafel wrap,280,falafel wrap,15,300,800,,,,,0.0,0.0,0.0,0.0,0.00029775,,gpt-5-mini
+openai,C20,I had knafeh,knafeh,150,knafeh,24,250,700,,,,,0.0,0.0,0.0,0.0,0.0002975,,gpt-5-mini
+openai,C21,I had ceviche,ceviche,220,ceviche,15,100,500,,,,,0.0,0.0,0.0,0.0,0.000297,,gpt-5-mini
+openai,C22,I had an acai bowl,acai bowl,300,acai bowl,15,200,700,,,,,0.0,0.0,0.0,0.0,0.00029775,,gpt-5-mini
+openai,C23,I had a chimichurri steak sandwich,chimichurri steak sandwich,280,chimichurri steak sandwich,19,350,900,,,,,0.0,0.0,0.0,0.0,0.00029925,,gpt-5-mini
+openai,C24,I had truffle mushroom risotto,truffle mushroom risotto,320,truffle mushroom risotto,15,250,800,,,,,0.0,0.0,0.0,0.0,0.0002985,,gpt-5-mini
+openai,C25,I had banh mi,banh mi,250,banh mi,19,250,800,,,,,0.0,0.0,0.0,0.0,0.0002975,,gpt-5-mini
+openai,C26,I ate halva,halva,90,halva,24,250,550,,,,,0.0,0.0,0.0,0.0,0.000297,,gpt-5-mini
+openai,C27,I had a mochi donut,mochi donut,90,mochi donut,24,200,450,,,,,0.0,0.0,0.0,0.0,0.00029775,,gpt-5-mini
+openai,C28,I ate chicken karaage,chicken karaage,180,chicken karaage,15,250,700,,,,,0.0,0.0,0.0,0.0,0.0002975,,gpt-5-mini
+openai,C29,I had butter chicken,butter chicken,320,butter chicken,15,300,900,,,,,0.0,0.0,0.0,0.0,0.000297,,gpt-5-mini
+openai,C30,I ate fish and chips,fish and chips,380,fish and chips,19,500,1200,,,,,0.0,0.0,0.0,0.0,0.0002975,,gpt-5-mini
+openai,C31,I had poutine,poutine,300,poutine,19,400,1000,,,,,0.0,0.0,0.0,0.0,0.000297,,gpt-5-mini
+openai,C32,I ate okonomiyaki,okonomiyaki,250,okonomiyaki,15,250,800,,,,,0.0,0.0,0.0,0.0,0.000298,,gpt-5-mini
+openai,C33,I had bibimbap,bibimbap,350,bibimbap,15,300,900,,,,,0.0,0.0,0.0,0.0,0.0002975,,gpt-5-mini
+openai,C34,I drank mango lassi,mango lassi,250,mango lassi,5,150,350,,,,,0.0,0.0,0.0,0.0,0.0002975,,gpt-5-mini
+openai,C35,I drank horchata,horchata,300,horchata,5,120,350,,,,,0.0,0.0,0.0,0.0,0.0002975,,gpt-5-mini
+openai,C36,I had arepa reina pepiada,arepa reina pepiada,250,arepa reina pepiada,15,300,900,,,,,0.0,0.0,0.0,0.0,0.0002985,,gpt-5-mini
+openai,C37,J'ai mangé un couscous tfaya,couscous tfaya,380,couscous tfaya,15,350,1000,,,,,0.0,0.0,0.0,0.0,0.00029925,,gpt-5-mini
+openai,C38,I ate a beef empanada,beef empanada,140,beef empanada,15,200,500,,,,,0.0,0.0,0.0,0.0,0.00029825,,gpt-5-mini
+openai,C39,I had an affogato,affogato,180,affogato,24,120,400,,,,,0.0,0.0,0.0,0.0,0.00029775,,gpt-5-mini
+openai,C40,I had dal makhani,dal makhani,300,dal makhani,15,250,800,,,,,0.0,0.0,0.0,0.0,0.0002975,,gpt-5-mini
+openrouter_deepseek,C01,J'ai mangé un tagine,tagine,350,tagine,15,250,800,,,,,0.0,0.0,0.0,0.0,9.701e-05,None,gpt-5-mini
+openrouter_deepseek,C02,J'ai bu un verre de thé marocain,moroccan tea,250,moroccan tea,5,0,120,,,,,0.0,0.0,0.0,0.0,9.779e-05,None,gpt-5-mini
+openrouter_deepseek,C03,I ate a shawarma,shawarma,300,shawarma,15,300,900,,,,,0.0,0.0,0.0,0.0,9.649e-05,None,gpt-5-mini
+openrouter_deepseek,C04,I had bubble tea,bubble tea,350,bubble tea,5,120,400,,,,,0.0,0.0,0.0,0.0,9.624e-05,None,gpt-5-mini
+openrouter_deepseek,C05,J'ai mangé une salade niçoise,salade nicoise,320,nicoise salad,15,250,700,,,,,0.0,0.0,0.0,0.0,9.805e-05,None,gpt-5-mini
+openrouter_deepseek,C06,I had a caesar salad,caesar salad,280,caesar salad,15,200,700,,,,,0.0,0.0,0.0,0.0,9.701e-05,None,gpt-5-mini
+openrouter_deepseek,C07,I ate beef dumplings,beef dumplings,300,beef dumplings,15,250,900,,,,,0.0,0.0,0.0,0.0,9.675e-05,None,gpt-5-mini
+openrouter_deepseek,C08,I ate dragon fruit pizza,dragon fruit pizza,250,dragon fruit pizza,19,200,700,,,,,0.0,0.0,0.0,0.0,9.675e-05,None,gpt-5-mini
+openrouter_deepseek,C09,I had a poké bowl,poke bowl,350,poke bowl,15,300,800,,,,,0.0,0.0,0.0,0.0,9.675e-05,None,gpt-5-mini
+openrouter_deepseek,C10,I had biryani,biryani,350,biryani,15,350,900,,,,,0.0,0.0,0.0,0.0,9.675e-05,None,gpt-5-mini
+openrouter_deepseek,C11,I had a sushi burrito,sushi burrito,300,sushi burrito,15,250,800,,,,,0.0,0.0,0.0,0.0,9.701e-05,None,gpt-5-mini
+openrouter_deepseek,C12,I had tres leches cake,tres leches cake,150,tres leches cake,24,250,700,,,,,0.0,0.0,0.0,0.0,9.727e-05,None,gpt-5-mini
+openrouter_deepseek,C13,I had a croque-monsieur,croque monsieur,180,croque monsieur,15,250,700,,,,,0.0,0.0,0.0,0.0,9.753e-05,None,gpt-5-mini
+openrouter_deepseek,C14,I ate jollof rice,jollof rice,300,jollof rice,15,250,700,,,,,0.0,0.0,0.0,0.0,9.727e-05,None,gpt-5-mini
+openrouter_deepseek,C15,I had pad thai,pad thai,350,pad thai,15,300,900,,,,,0.0,0.0,0.0,0.0,9.624e-05,None,gpt-5-mini
+openrouter_deepseek,C16,I had pho bo,pho bo,450,pho bo,15,250,800,,,,,0.0,0.0,0.0,0.0,9.624e-05,None,gpt-5-mini
+openrouter_deepseek,C17,I ate ramen,ramen,450,ramen,15,300,900,,,,,0.0,0.0,0.0,0.0,9.572e-05,None,gpt-5-mini
+openrouter_deepseek,C18,I had quesabirria tacos,quesabirria tacos,280,quesabirria tacos,19,300,900,,,,,0.0,0.0,0.0,0.0,9.779e-05,None,gpt-5-mini
+openrouter_deepseek,C19,I ate a falafel wrap,falafel wrap,280,falafel wrap,15,300,800,,,,,0.0,0.0,0.0,0.0,9.701e-05,None,gpt-5-mini
+openrouter_deepseek,C20,I had knafeh,knafeh,150,knafeh,24,250,700,,,,,0.0,0.0,0.0,0.0,9.675e-05,None,gpt-5-mini
+openrouter_deepseek,C21,I had ceviche,ceviche,220,ceviche,15,100,500,,,,,0.0,0.0,0.0,0.0,9.624e-05,None,gpt-5-mini
+openrouter_deepseek,C22,I had an acai bowl,acai bowl,300,acai bowl,15,200,700,,,,,0.0,0.0,0.0,0.0,9.701e-05,None,gpt-5-mini
+openrouter_deepseek,C23,I had a chimichurri steak sandwich,chimichurri steak sandwich,280,chimichurri steak sandwich,19,350,900,,,,,0.0,0.0,0.0,0.0,9.857e-05,None,gpt-5-mini
+openrouter_deepseek,C24,I had truffle mushroom risotto,truffle mushroom risotto,320,truffle mushroom risotto,15,250,800,,,,,0.0,0.0,0.0,0.0,9.779e-05,None,gpt-5-mini
+openrouter_deepseek,C25,I had banh mi,banh mi,250,banh mi,19,250,800,,,,,0.0,0.0,0.0,0.0,9.675e-05,None,gpt-5-mini
+openrouter_deepseek,C26,I ate halva,halva,90,halva,24,250,550,,,,,0.0,0.0,0.0,0.0,9.624e-05,None,gpt-5-mini
+openrouter_deepseek,C27,I had a mochi donut,mochi donut,90,mochi donut,24,200,450,,,,,0.0,0.0,0.0,0.0,9.701e-05,None,gpt-5-mini
+openrouter_deepseek,C28,I ate chicken karaage,chicken karaage,180,chicken karaage,15,250,700,,,,,0.0,0.0,0.0,0.0,9.675e-05,None,gpt-5-mini
+openrouter_deepseek,C29,I had butter chicken,butter chicken,320,butter chicken,15,300,900,,,,,0.0,0.0,0.0,0.0,9.624e-05,None,gpt-5-mini
+openrouter_deepseek,C30,I ate fish and chips,fish and chips,380,fish and chips,19,500,1200,,,,,0.0,0.0,0.0,0.0,9.675e-05,None,gpt-5-mini
+openrouter_deepseek,C31,I had poutine,poutine,300,poutine,19,400,1000,,,,,0.0,0.0,0.0,0.0,9.624e-05,None,gpt-5-mini
+openrouter_deepseek,C32,I ate okonomiyaki,okonomiyaki,250,okonomiyaki,15,250,800,,,,,0.0,0.0,0.0,0.0,9.727e-05,None,gpt-5-mini
+openrouter_deepseek,C33,I had bibimbap,bibimbap,350,bibimbap,15,300,900,,,,,0.0,0.0,0.0,0.0,9.675e-05,None,gpt-5-mini
+openrouter_deepseek,C34,I drank mango lassi,mango lassi,250,mango lassi,5,150,350,,,,,0.0,0.0,0.0,0.0,9.675e-05,None,gpt-5-mini
+openrouter_deepseek,C35,I drank horchata,horchata,300,horchata,5,120,350,,,,,0.0,0.0,0.0,0.0,9.675e-05,None,gpt-5-mini
+openrouter_deepseek,C36,I had arepa reina pepiada,arepa reina pepiada,250,arepa reina pepiada,15,300,900,,,,,0.0,0.0,0.0,0.0,9.779e-05,None,gpt-5-mini
+openrouter_deepseek,C37,J'ai mangé un couscous tfaya,couscous tfaya,380,couscous tfaya,15,350,1000,,,,,0.0,0.0,0.0,0.0,9.857e-05,None,gpt-5-mini
+openrouter_deepseek,C38,I ate a beef empanada,beef empanada,140,beef empanada,15,200,500,,,,,0.0,0.0,0.0,0.0,9.753e-05,None,gpt-5-mini
+openrouter_deepseek,C39,I had an affogato,affogato,180,affogato,24,120,400,,,,,0.0,0.0,0.0,0.0,9.701e-05,None,gpt-5-mini
+openrouter_deepseek,C40,I had dal makhani,dal makhani,300,dal makhani,15,250,800,,,,,0.0,0.0,0.0,0.0,9.675e-05,None,gpt-5-mini

@@ -9,6 +9,18 @@ from pathlib import Path
 
 PROPOSED_ROWS_PATH = Path("data/proposed_rows.csv")
 
+HEADER = [
+    "timestamp",
+    "raw_food_text",
+    "normalized_food_text",
+    "grams",
+    "category_id",
+    "category_name",
+    "source_input",
+    "match_score",
+    "status",
+]
+
 
 def _normalize_food_text_for_queue(text: str) -> str:
     text = (text or "").strip().lower()
@@ -17,6 +29,26 @@ def _normalize_food_text_for_queue(text: str) -> str:
     text = re.sub(r"[^a-z0-9\s]", " ", text)
     text = " ".join(text.split())
     return text
+
+
+def _ensure_file_schema() -> None:
+    if not PROPOSED_ROWS_PATH.exists():
+        PROPOSED_ROWS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with PROPOSED_ROWS_PATH.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(HEADER)
+        return
+
+    with PROPOSED_ROWS_PATH.open("r", encoding="utf-8", newline="") as f:
+        first_line = f.readline().strip()
+
+    expected = ",".join(HEADER)
+    if first_line != expected:
+        backup_path = PROPOSED_ROWS_PATH.with_suffix(".backup.csv")
+        PROPOSED_ROWS_PATH.replace(backup_path)
+        with PROPOSED_ROWS_PATH.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(HEADER)
 
 
 def _row_already_exists(normalized_food_text: str, category_id: int | None) -> bool:
@@ -47,31 +79,15 @@ def append_proposed_row(
     source_input: str,
     match_score: float,
 ) -> None:
-    PROPOSED_ROWS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _ensure_file_schema()
 
     normalized_food_text = _normalize_food_text_for_queue(food_text)
 
     if _row_already_exists(normalized_food_text, category_id):
         return
 
-    file_exists = PROPOSED_ROWS_PATH.exists()
-
     with PROPOSED_ROWS_PATH.open("a", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
-
-        if not file_exists:
-            writer.writerow([
-                "timestamp",
-                "raw_food_text",
-                "normalized_food_text",
-                "grams",
-                "category_id",
-                "category_name",
-                "source_input",
-                "match_score",
-                "status",
-            ])
-
         writer.writerow([
             datetime.utcnow().isoformat(),
             food_text,

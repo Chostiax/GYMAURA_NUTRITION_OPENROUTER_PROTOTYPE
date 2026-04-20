@@ -90,14 +90,15 @@ def run_pipeline(
     dataset,
     model: str | None = None,
     save_unmatched_candidates: bool = True,
+    smart_provider: str | None = None,
+    smart_model: str | None = None,
 ) -> dict:
     """
-    Product logic:
-    - Never decompose dishes
-    - Known foods -> value interpreted as portions
-    - Unknown / rejected foods -> value interpreted as grams
-    - If unmatched OR rejected -> LLM fallback nutrition
-    - User should never see nutrition = None
+    Runtime pipeline:
+    - Gemma/OpenRouter handles extraction
+    - known foods use dataset nutrition
+    - unmatched or rejected foods use LLM fallback nutrition
+    - user should never see nutrition = None
     """
     extraction = extract_foods_with_openrouter(text, model=model)
 
@@ -119,7 +120,11 @@ def run_pipeline(
         }
 
     final_items = []
-    extraction_cost = extraction["usage"].get("cost") if isinstance(extraction.get("usage"), dict) else None
+
+    extraction_cost = None
+    if isinstance(extraction.get("usage"), dict):
+        extraction_cost = extraction["usage"].get("cost")
+
     fallback_cost_total = 0.0
 
     for item in extraction["items"]:
@@ -129,7 +134,7 @@ def run_pipeline(
             category_id=item.get("category_id"),
         )
 
-        # Reject bad matches BEFORE nutrition logic
+        # Reject suspicious matches before nutrition logic
         if match_result["matched"]:
             if _should_reject_match_due_to_category_mismatch(item, match_result):
                 match_result = _reject_match(match_result, "rejected_category_mismatch")
@@ -142,6 +147,8 @@ def run_pipeline(
         needs_clarification = False
         fallback_raw_output = None
         fallback_estimated_cost_usd = None
+        fallback_provider = None
+        fallback_model = None
 
         raw_value = item.get("value")
 
@@ -149,6 +156,7 @@ def run_pipeline(
         if match_result["matched"]:
             dataset_row = dataset.loc[match_result["row_index"]]
 
+            # Known food => value = portions
             portions = raw_value
             grams, grams_source = _resolve_known_food_grams(
                 portions=portions,
@@ -169,11 +177,15 @@ def run_pipeline(
                     food_text=item["food_text"],
                     grams=grams,
                     original_text=text,
+                    provider=smart_provider,
+                    model=smart_model,
                 )
                 nutrition = fallback["nutrition"]
                 nutrition_source = "llm_fallback_after_dataset_failure"
                 fallback_raw_output = fallback["raw_output"]
                 fallback_estimated_cost_usd = fallback["estimated_cost_usd"] or 0.0
+                fallback_provider = fallback.get("provider")
+                fallback_model = fallback.get("model")
                 fallback_cost_total += fallback_estimated_cost_usd
 
             if grams is None:
@@ -189,7 +201,7 @@ def run_pipeline(
                     match_score=match_result.get("score", 0.0),
                 )
 
-        # CASE 2: unmatched OR rejected -> always use fallback nutrition
+        # CASE 2: unmatched or rejected
         else:
             portions = None
             grams, grams_source = _apply_unmatched_grams_guard(
@@ -212,11 +224,15 @@ def run_pipeline(
                 food_text=item["food_text"],
                 grams=grams,
                 original_text=text,
+                provider=smart_provider,
+                model=smart_model,
             )
             nutrition = fallback["nutrition"]
             nutrition_source = "llm_fallback"
             fallback_raw_output = fallback["raw_output"]
             fallback_estimated_cost_usd = fallback["estimated_cost_usd"] or 0.0
+            fallback_provider = fallback.get("provider")
+            fallback_model = fallback.get("model")
             fallback_cost_total += fallback_estimated_cost_usd
 
         final_items.append(
@@ -243,6 +259,8 @@ def run_pipeline(
                 "nutrition_source": nutrition_source,
                 "fallback_nutrition_raw_output": fallback_raw_output,
                 "fallback_estimated_cost_usd": fallback_estimated_cost_usd,
+                "fallback_provider": fallback_provider,
+                "fallback_model": fallback_model,
                 "needs_clarification": needs_clarification,
             }
         )

@@ -7,6 +7,7 @@ from src.pipeline import run_pipeline
 
 DATA_PATH = "data/USDA_V2_merged.json"
 PROPOSED_ROWS_PATH = Path("data/proposed_rows.csv")
+BENCHMARK_RESULTS_PATH = Path("benchmark_fallback_growth_results.csv")
 
 
 @st.cache_data
@@ -16,21 +17,61 @@ def get_dataset():
 
 @st.cache_data
 def load_review_queue():
-    if PROPOSED_ROWS_PATH.exists():
-        return pd.read_csv(PROPOSED_ROWS_PATH)
-    return pd.DataFrame()
+    if not PROPOSED_ROWS_PATH.exists():
+        return pd.DataFrame()
+
+    try:
+        return pd.read_csv(PROPOSED_ROWS_PATH, engine="python", on_bad_lines="skip")
+    except Exception:
+        return pd.DataFrame(
+            columns=[
+                "timestamp",
+                "raw_food_text",
+                "normalized_food_text",
+                "grams",
+                "category_id",
+                "category_name",
+                "source_input",
+                "match_score",
+                "status",
+            ]
+        )
+
+
+@st.cache_data
+def load_benchmark_results():
+    if not BENCHMARK_RESULTS_PATH.exists():
+        return pd.DataFrame()
+
+    try:
+        return pd.read_csv(BENCHMARK_RESULTS_PATH, engine="python", on_bad_lines="skip")
+    except Exception:
+        return pd.DataFrame()
 
 
 st.set_page_config(page_title="GymAura Nutrition Prototype", layout="wide")
 
 st.title("GymAura Nutrition Prototype")
 st.write(
-    "Flow: text (any language) → Gemma/OpenRouter extraction → matcher → dataset nutrition or LLM fallback"
+    "Flow: text (any language) → Gemma/OpenRouter extraction → matcher → dataset nutrition or smart-model fallback"
 )
 
 dataset = get_dataset()
 
-model = st.text_input("OpenRouter extraction model", value="google/gemma-3-4b-it")
+extraction_model = st.text_input("OpenRouter extraction model", value="google/gemma-3-4b-it")
+
+smart_provider = st.selectbox(
+    "Fallback + dataset growth provider",
+    ["openai", "openrouter_deepseek"],
+    index=0,
+)
+
+smart_model_override = st.text_input(
+    "Optional smart model override",
+    value="",
+    placeholder="Leave blank to use .env default",
+)
+
 save_unmatched = st.checkbox("Save unmatched / low-confidence items to review queue", value=True)
 
 example_sentences = [
@@ -41,6 +82,7 @@ example_sentences = [
     "I ate dragon fruit pizza",
     "I had a caesar salad",
     "J'ai mangé un tagine et un verre de thé marocain",
+    "I had beef dumplings",
     "I didn't eat anything today",
 ]
 
@@ -75,8 +117,10 @@ if st.button("Run Prototype"):
         result = run_pipeline(
             text=current_input,
             dataset=dataset,
-            model=model,
+            model=extraction_model,
             save_unmatched_candidates=save_unmatched,
+            smart_provider=smart_provider,
+            smart_model=smart_model_override.strip() or None,
         )
 
         st.subheader("Input")
@@ -173,4 +217,43 @@ if PROPOSED_ROWS_PATH.exists():
 else:
     st.info(
         "No proposed_rows.csv file yet. It will be created automatically when an unmatched or low-confidence item is logged."
-    )   
+    )
+
+st.subheader("Fallback / Growth Benchmark Results")
+
+benchmark_df = load_benchmark_results()
+
+if benchmark_df.empty:
+    st.info("No benchmark results file found yet. Run: uv run python -m scripts.benchmark_fallback_growth")
+else:
+    st.write(f"{len(benchmark_df)} benchmark row(s) loaded")
+
+    providers = sorted(benchmark_df["provider"].dropna().unique().tolist())
+    selected_provider_filter = st.selectbox(
+        "Filter benchmark provider",
+        ["All"] + providers,
+        index=0,
+    )
+
+    filtered_df = benchmark_df.copy()
+    if selected_provider_filter != "All":
+        filtered_df = filtered_df[filtered_df["provider"] == selected_provider_filter]
+
+    st.dataframe(filtered_df, use_container_width=True)
+
+    if "provider" in benchmark_df.columns and "total_score" in benchmark_df.columns:
+        summary_rows = []
+        for provider in providers:
+            provider_df = benchmark_df[benchmark_df["provider"] == provider]
+            summary_rows.append(
+                {
+                    "provider": provider,
+                    "cases": len(provider_df),
+                    "avg_total_score": round(provider_df["total_score"].mean(), 3),
+                    "sum_total_score": round(provider_df["total_score"].sum(), 3),
+                    "estimated_total_cost_usd": round(provider_df["estimated_cost_usd"].fillna(0).sum(), 8),
+                }
+            )
+
+        st.subheader("Benchmark Summary")
+        st.dataframe(pd.DataFrame(summary_rows), use_container_width=True)
