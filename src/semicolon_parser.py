@@ -5,6 +5,9 @@ from typing import Any
 from src.data_prep import CATEGORY_ID_TO_NAME, CATEGORY_NAME_TO_ID
 
 
+VALID_UNITS = {"g", "portion"}
+
+
 def _parse_value(value: str | None) -> float | None:
     if value is None:
         return None
@@ -14,7 +17,10 @@ def _parse_value(value: str | None) -> float | None:
         return None
 
     cleaned = cleaned.replace(",", ".")
-    cleaned = cleaned.replace("g", "").strip()
+    cleaned = cleaned.replace("grams", "")
+    cleaned = cleaned.replace("gram", "")
+    cleaned = cleaned.replace("g", "")
+    cleaned = cleaned.strip()
 
     try:
         parsed = float(cleaned)
@@ -23,6 +29,21 @@ def _parse_value(value: str | None) -> float | None:
         return parsed
     except ValueError:
         return None
+
+
+def _parse_unit(unit: str | None) -> str | None:
+    if unit is None:
+        return None
+
+    cleaned = unit.strip().lower()
+
+    if cleaned in {"g", "gram", "grams"}:
+        return "g"
+
+    if cleaned in {"portion", "portions", "serving", "servings", "piece", "pieces", "unit", "units"}:
+        return "portion"
+
+    return None
 
 
 def _parse_category(value: str | None) -> tuple[int | None, str | None]:
@@ -45,17 +66,17 @@ def _parse_category(value: str | None) -> tuple[int | None, str | None]:
 def parse_semicolon_output(raw_text: str) -> dict[str, Any]:
     """
     Expected output:
-        pizza;1;19
-        chicken breast;1;18
-        dragon fruit pizza;250;19
+    food_text;value;unit;category_id
 
-    Meaning:
-        value = portions if food is known
-        value = grams if food is unknown
+    Examples:
+    chicken breast;300;g;18
+    apple;2;portion;12
+    tagine;350;g;15
 
-    Special case:
-        NO_FOOD
+    Backward compatible with old:
+    food_text;value;category_id
     """
+
     text = (raw_text or "").strip()
 
     if not text:
@@ -82,13 +103,23 @@ def parse_semicolon_output(raw_text: str) -> dict[str, Any]:
     for idx, line in enumerate(lines, start=1):
         parts = [part.strip() for part in line.split(";")]
 
-        if len(parts) != 3:
+        if len(parts) == 4:
+            food_text, value_text, unit_text, category_text = parts
+            unit = _parse_unit(unit_text)
+
+        elif len(parts) == 3:
+            # Backward compatibility with old extractor output
+            food_text, value_text, category_text = parts
+            unit = None
             parse_errors.append(
-                f"Line {idx}: expected 3 fields separated by ';' but got {len(parts)} -> {line}"
+                f"Line {idx}: old 3-field format detected. Unit is missing -> {line}"
+            )
+
+        else:
+            parse_errors.append(
+                f"Line {idx}: expected 4 fields separated by ';' but got {len(parts)} -> {line}"
             )
             continue
-
-        food_text, value_text, category_text = parts
 
         if not food_text:
             parse_errors.append(f"Line {idx}: missing food_text -> {line}")
@@ -97,10 +128,14 @@ def parse_semicolon_output(raw_text: str) -> dict[str, Any]:
         value = _parse_value(value_text)
         category_id, category_name = _parse_category(category_text)
 
+        if unit is None and len(parts) == 4:
+            parse_errors.append(f"Line {idx}: invalid unit '{unit_text}' -> {line}")
+
         items.append(
             {
                 "food_text": food_text.lower().strip(),
                 "value": value,
+                "unit": unit,
                 "category_id": category_id,
                 "category_name": category_name,
             }
