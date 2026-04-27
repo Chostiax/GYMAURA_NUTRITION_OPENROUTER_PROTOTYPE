@@ -41,3 +41,23 @@ Typical values"
 2026-04-24T02:50:03.580799,tea,tea,200.0,5,Beverages,I drank tea,65.2,pending_review,openrouter_deepseek,deepseek/deepseek-v3.2,"{""calories"": 0.0, ""protein_g"": 0.0, ""carbs_g"": 0.0, ""fat_g"": 0.0}",0;0;0;0
 2026-04-24T02:50:53.069771,pizza rolls,pizza rolls,200.0,19,Restaurant Foods,I ate pizza rolls,0.0,pending_review,openrouter_deepseek,deepseek/deepseek-v3.2,"{""calories"": 500.0, ""protein_g"": 15.0, ""carbs_g"": 60.0, ""fat_g"": 20.0}",500;15;60;20
 2026-04-24T02:51:34.714045,iced tea,iced tea,300.0,5,Beverages,I drank iced tea,65.2,pending_review,openrouter_deepseek,deepseek/deepseek-v3.2,"{""calories"": 0.0, ""protein_g"": 0.0, ""carbs_g"": 0.0, ""fat_g"": 0.0}",0;0;0;0
+2026-04-26T16:46:39.982561,bechamel sauce,bechamel sauce,80.0,22,"Soups, Sauces, and Gravies",j'ai mangé 200g de pattes avec une sauce bechamel et 80g de champignons avec 200g de blanc de poulet,63.1,pending_review_llm_failed,,,{},
+2026-04-26T16:46:44.860271,de pattes avec une sauce,de pattes avec une sauce,200.0,15,"Meals, Entrees, and Side Dishes",j'ai mangé 200g de pattes avec une sauce bechamel et 80g de champignons avec 200g de blanc de poulet,39.4,pending_review_llm_failed,,,{},
+2026-04-26T21:57:24.231332,mango juice,mango juice,300.0,5,Beverages,I had 300g of chicken breast with 200g of rice and a cup of mango juice,70.9,pending_review,deepseek_v4_flash,deepseek/deepseek-v4-flash,"{""calories"": 150.0, ""protein_g"": 1.5, ""carbs_g"": 36.0, ""fat_g"": 0.6}","{
+  ""calories"": 150.0,
+  ""protein_g"": 1.5,
+  ""carbs_g"": 36.0,
+  ""fat_g"": 0.6
+}"
+2026-04-26T22:27:28.487864,pho bo,pho bo,200.0,15,"Meals, Entrees, and Side Dishes",I ate a bowl of pho bo,24.3,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 180.0, ""protein_g"": 12.0, ""carbs_g"": 24.0, ""fat_g"": 5.0}","{
+  ""calories"": 180,
+  ""protein_g"": 12,
+  ""carbs_g"": 24,
+  ""fat_g"": 5
+}"
+2026-04-27T01:30:09.598364,oreos,oreos,200.0,21,Snacks,I had a pack of oreos and a strawberry milkshake for breakfast,62.8,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 960.0, ""protein_g"": 8.0, ""carbs_g"": 144.0, ""fat_g"": 36.0}","{
+  ""calories"": 960,
+  ""carbs_g"": 144,
+  ""fat_g"": 36,
+  ""protein_g"": 8
+}"

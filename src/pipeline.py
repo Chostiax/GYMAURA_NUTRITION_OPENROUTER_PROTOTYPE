@@ -47,12 +47,6 @@ def _resolve_matched_food_grams(
     unit: str | None,
     dataset_row,
 ) -> tuple[float | None, float | None, str | None]:
-    """
-    For matched foods:
-    - unit = g => use value directly as grams
-    - unit = portion => convert using dataset default portion grams
-    - unit missing => backward-compatible fallback: treat as portion
-    """
     numeric_value = _safe_float(value)
 
     if numeric_value is None:
@@ -82,12 +76,6 @@ def _resolve_unmatched_food_grams(
     unit: str | None,
     category_id: int | None,
 ) -> tuple[float | None, float | None, str | None]:
-    """
-    For unmatched foods:
-    - unit = g => use value directly as grams
-    - unit = portion => pass a reasonable grams estimate to LLM fallback if possible
-    - unit missing => use grams with guard for backward compatibility
-    """
     numeric_value = _safe_float(value)
 
     if numeric_value is None:
@@ -98,9 +86,6 @@ def _resolve_unmatched_food_grams(
         grams_source = "explicit_or_extracted_grams"
 
     elif unit == "portion":
-        # For unmatched count-based foods, we do not have dataset default grams.
-        # Use the value as contextual information, but give the LLM a realistic minimum.
-        # The extracted food_text + original sentence still help the LLM estimate.
         if category_id in SMALL_WEIGHT_ALLOWED_CATEGORIES:
             grams = numeric_value
             grams_source = "unmatched_portion_small_category_as_grams"
@@ -109,7 +94,6 @@ def _resolve_unmatched_food_grams(
             grams_source = "unmatched_portion_context_guard"
 
     else:
-        # Backward compatibility with old 3-field extractor.
         grams = numeric_value
         grams_source = "missing_unit_assumed_grams_with_guard"
 
@@ -163,6 +147,19 @@ def _reject_match(match_result: dict, reason: str) -> dict:
     }
 
 
+def _empty_fallback_meta() -> dict:
+    return {
+        "raw_output": None,
+        "estimated_cost_usd": None,
+        "provider": None,
+        "model": None,
+        "elapsed_ms": None,
+        "used_structured_output": False,
+        "used_second_attempt": False,
+        "error": None,
+    }
+
+
 def _call_fallback(
     *,
     item: dict,
@@ -171,15 +168,7 @@ def _call_fallback(
     smart_provider: str | None,
     smart_model: str | None,
 ) -> tuple[dict | None, dict]:
-    meta = {
-        "raw_output": None,
-        "estimated_cost_usd": None,
-        "provider": None,
-        "model": None,
-        "used_repair_pass": False,
-        "used_second_attempt": False,
-        "error": None,
-    }
+    meta = _empty_fallback_meta()
 
     try:
         fallback = estimate_nutrition_with_llm(
@@ -196,7 +185,8 @@ def _call_fallback(
         meta["estimated_cost_usd"] = fallback.get("estimated_cost_usd") or 0.0
         meta["provider"] = fallback.get("provider")
         meta["model"] = fallback.get("model")
-        meta["used_repair_pass"] = fallback.get("used_repair_pass", False)
+        meta["elapsed_ms"] = fallback.get("elapsed_ms")
+        meta["used_structured_output"] = fallback.get("used_structured_output", False)
         meta["used_second_attempt"] = fallback.get("used_second_attempt", False)
 
         return fallback["nutrition"], meta
@@ -226,6 +216,9 @@ def run_pipeline(
             "parse_errors": extraction.get("parse_errors"),
             "model": extraction.get("model"),
             "estimated_cost_usd": None,
+            "fallback_elapsed_total_ms": 0.0,
+            "fallback_count": 0,
+            "dataset_count": 0,
         }
 
     final_items = []
@@ -235,6 +228,9 @@ def run_pipeline(
         extraction_cost = extraction["usage"].get("cost")
 
     fallback_cost_total = 0.0
+    fallback_elapsed_total_ms = 0.0
+    fallback_count = 0
+    dataset_count = 0
 
     for item in extraction["items"]:
         raw_value = item.get("value")
@@ -256,16 +252,7 @@ def run_pipeline(
         nutrition = None
         nutrition_source = None
         needs_clarification = False
-
-        fallback_meta = {
-            "raw_output": None,
-            "estimated_cost_usd": None,
-            "provider": None,
-            "model": None,
-            "used_repair_pass": False,
-            "used_second_attempt": False,
-            "error": None,
-        }
+        fallback_meta = _empty_fallback_meta()
 
         portions = None
         grams = None
@@ -290,6 +277,9 @@ def run_pipeline(
             nutrition = compute_item_nutrition(dataset_row, grams)
             nutrition_source = "dataset"
 
+            if nutrition is not None:
+                dataset_count += 1
+
             if nutrition is None:
                 nutrition, fallback_meta = _call_fallback(
                     item=item,
@@ -301,11 +291,13 @@ def run_pipeline(
 
                 if nutrition is not None:
                     nutrition_source = (
-                        "llm_fallback_after_dataset_failure_repair"
-                        if fallback_meta["used_repair_pass"]
+                        "llm_fallback_after_dataset_failure_structured"
+                        if fallback_meta["used_structured_output"]
                         else "llm_fallback_after_dataset_failure"
                     )
                     fallback_cost_total += fallback_meta["estimated_cost_usd"] or 0.0
+                    fallback_elapsed_total_ms += fallback_meta["elapsed_ms"] or 0.0
+                    fallback_count += 1
                 else:
                     nutrition_source = "llm_failure_after_dataset_failure"
 
@@ -344,8 +336,14 @@ def run_pipeline(
             )
 
             if nutrition is not None:
-                nutrition_source = "llm_fallback_repair" if fallback_meta["used_repair_pass"] else "llm_fallback"
+                nutrition_source = (
+                    "llm_fallback_structured"
+                    if fallback_meta["used_structured_output"]
+                    else "llm_fallback"
+                )
                 fallback_cost_total += fallback_meta["estimated_cost_usd"] or 0.0
+                fallback_elapsed_total_ms += fallback_meta["elapsed_ms"] or 0.0
+                fallback_count += 1
             else:
                 nutrition_source = "llm_failure"
 
@@ -396,7 +394,8 @@ def run_pipeline(
                 "fallback_estimated_cost_usd": fallback_meta["estimated_cost_usd"],
                 "fallback_provider": fallback_meta["provider"],
                 "fallback_model": fallback_meta["model"],
-                "fallback_used_repair_pass": fallback_meta["used_repair_pass"],
+                "fallback_elapsed_ms": fallback_meta["elapsed_ms"],
+                "fallback_used_structured_output": fallback_meta["used_structured_output"],
                 "fallback_used_second_attempt": fallback_meta["used_second_attempt"],
                 "fallback_error": fallback_meta["error"],
                 "needs_clarification": needs_clarification,
@@ -419,4 +418,7 @@ def run_pipeline(
         "parse_errors": extraction.get("parse_errors"),
         "model": extraction.get("model"),
         "estimated_cost_usd": total_estimated_cost_usd,
+        "fallback_elapsed_total_ms": round(fallback_elapsed_total_ms, 2),
+        "fallback_count": fallback_count,
+        "dataset_count": dataset_count,
     }
