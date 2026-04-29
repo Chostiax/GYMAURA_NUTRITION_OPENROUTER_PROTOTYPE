@@ -61,3 +61,93 @@ Typical values"
   ""fat_g"": 36,
   ""protein_g"": 8
 }"
+2026-04-27T12:39:55.136671,couscous de poulet,couscous de poulet,350.0,15,"Meals, Entrees, and Side Dishes",j'ai mangé du couscous de poulet et un verre de kéfir,48.5,pending_review,deepseek_v4_flash,deepseek/deepseek-v4-flash,"{""calories"": 490.0, ""protein_g"": 21.0, ""carbs_g"": 56.0, ""fat_g"": 18.0}","{
+  ""calories"": 490,
+  ""protein_g"": 21.0,
+  ""carbs_g"": 56.0,
+  ""fat_g"": 18.0
+}"
+2026-04-27T18:55:59.059473,couscous,couscous,350.0,15,"Meals, Entrees, and Side Dishes",j'ai mangé du couscous et un verre de kéfir,0.0,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 420.0, ""protein_g"": 14.0, ""carbs_g"": 87.5, ""fat_g"": 1.4}","{
+  ""calories"": 420.0,
+  ""carbs_g"": 87.5,
+  ""fat_g"": 1.4,
+  ""protein_g"": 14.0
+}"
+2026-04-29T02:52:15.744484,raclette,raclette,300.0,15,"Meals, Entrees, and Side Dishes",j'ai mangé une raclette et un verre de champagne,18.2,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 1200.0, ""protein_g"": 75.0, ""carbs_g"": 3.0, ""fat_g"": 96.0}","{
+  ""calories"": 1200.0,
+  ""carbs_g"": 3.0,
+  ""fat_g"": 96.0,
+  ""protein_g"": 75.0
+}"
+2026-04-29T02:52:27.643717,champagne,champagne,330.0,5,Beverages,j'ai mangé une raclette et un verre de champagne,19.8,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 231.0, ""protein_g"": 0.33, ""carbs_g"": 19.8, ""fat_g"": 0.0}","{
+  ""calories"": 231.0,
+  ""carbs_g"": 19.8,
+  ""fat_g"": 0.0,
+  ""protein_g"": 0.33
+}"
+2026-04-29T03:01:16.856475,grilled chicken,grilled chicken,200.0,18,Poultry Products,"ate a salad with grilled chicken, feta, and vinaigrette",64.8,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 330.0, ""protein_g"": 62.0, ""carbs_g"": 0.0, ""fat_g"": 7.0}","{
+  ""calories"": 330.0,
+  ""protein_g"": 62.0,
+  ""carbs_g"": 0.0,
+  ""fat_g"": 7.0
+}"
+2026-04-29T03:01:21.914575,vinaigrette,vinaigrette,50.0,22,"Soups, Sauces, and Gravies","ate a salad with grilled chicken, feta, and vinaigrette",19.2,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 200.0, ""protein_g"": 0.0, ""carbs_g"": 2.0, ""fat_g"": 20.0}","{
+  ""calories"": 200.0,
+  ""carbs_g"": 2.0,
+  ""fat_g"": 20.0,
+  ""protein_g"": 0.0
+}"
+2026-04-29T03:02:23.414384,burger,burger,200.0,19,Restaurant Foods,I ate a burger with fries and a diet coke,63.4,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 540.0, ""protein_g"": 28.0, ""carbs_g"": 42.0, ""fat_g"": 28.0}","{
+    ""calories"": 540.0,
+    ""protein_g"": 28.0,
+    ""carbs_g"": 42.0,
+    ""fat_g"": 28.0
+}"
+2026-04-29T03:02:28.234398,fries,fries,200.0,15,"Meals, Entrees, and Side Dishes",I ate a burger with fries and a diet coke,64.8,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 610.0, ""protein_g"": 7.0, ""carbs_g"": 74.0, ""fat_g"": 29.0}","{
+  ""calories"": 610.0,
+  ""carbs_g"": 74.0,
+  ""fat_g"": 29.0,
+  ""protein_g"": 7.0
+}"
+2026-04-29T03:02:35.498053,diet coke,diet coke,200.0,5,Beverages,I ate a burger with fries and a diet coke,38.9,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 0.0, ""protein_g"": 0.0, ""carbs_g"": 0.0, ""fat_g"": 0.0}","{
+  ""calories"": 0.0,
+  ""protein_g"": 0.0,
+  ""carbs_g"": 0.0,
+  ""fat_g"": 0.0
+}"
+2026-04-29T03:10:19.614770,salmon,salmon,200.0,11,Finfish and Shellfish Products,I ate quinoa with steamed kale and salmon,87.7,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 412.0, ""protein_g"": 44.0, ""carbs_g"": 0.0, ""fat_g"": 26.0}","{
+  ""calories"": 412.0,
+  ""carbs_g"": 0.0,
+  ""fat_g"": 26.0,
+  ""protein_g"": 44.0
+}"
+2026-04-29T03:11:15.478609,spinach & mango smoothie,spinach mango smoothie,200.0,5,Beverages,I ate a spinach & mango smoothie,45.6,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 120.0, ""protein_g"": 2.0, ""carbs_g"": 28.0, ""fat_g"": 0.5}","{
+    ""calories"": 120.0,
+    ""protein_g"": 2.0,
+    ""carbs_g"": 28.0,
+    ""fat_g"": 0.5
+}"
+2026-04-29T03:11:45.889264,mcdonald s cheese burger,mcdonald s cheese burger,200.0,19,Restaurant Foods,I ate a McDonald's cheeseburger.,60.3,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 520.0, ""protein_g"": 24.0, ""carbs_g"": 40.0, ""fat_g"": 26.0}","{
+  ""calories"": 520.0,
+  ""carbs_g"": 40.0,
+  ""fat_g"": 26.0,
+  ""protein_g"": 24.0
+}"
+2026-04-29T03:13:52.274250,oatmeal,oatmeal,200.0,7,Cereal Grains and Pasta,I ate oatmeal with berries and walnuts.,0.0,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 140.0, ""protein_g"": 5.0, ""carbs_g"": 25.0, ""fat_g"": 3.0}","{
+  ""calories"": 140.0,
+  ""carbs_g"": 25.0,
+  ""fat_g"": 3.0,
+  ""protein_g"": 5.0
+}"
+2026-04-29T03:13:57.984277,walnuts,walnuts,50.0,16,Nut and Seed Products,I ate oatmeal with berries and walnuts.,87.7,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 327.0, ""protein_g"": 7.65, ""carbs_g"": 6.85, ""fat_g"": 32.65}","{
+  ""calories"": 327.0,
+  ""protein_g"": 7.65,
+  ""carbs_g"": 6.85,
+  ""fat_g"": 32.65
+}"
+2026-04-29T03:19:31.550317,babeur,babeur,250.0,21,Snacks,j'ai mangé du couscous de poulet et un verre de babeur,19.8,pending_review,deepseek_v32,deepseek/deepseek-v3.2,"{""calories"": 87.5, ""protein_g"": 5.75, ""carbs_g"": 8.75, ""fat_g"": 3.0}","{
+  ""calories"": 87.5,
+  ""carbs_g"": 8.75,
+  ""fat_g"": 3.0,
+  ""protein_g"": 5.75
+}"

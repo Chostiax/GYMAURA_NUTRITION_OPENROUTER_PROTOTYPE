@@ -1,0 +1,32 @@
+{
+  "deepseek_v32": {
+    "cases": 40,
+    "success_count": 40,
+    "success_rate": 1.0,
+    "avg_total_score": 1.0,
+    "sum_total_score": 40.0,
+    "estimated_total_cost_usd": 0.002961455,
+    "avg_elapsed_ms": 5442.88,
+    "min_elapsed_ms": 2151.18,
+    "max_elapsed_ms": 16559.13,
+    "structured_output_rate": 0.95,
+    "second_attempt_rate": 0.05,
+    "cached_tokens_total": 256,
+    "cache_write_tokens_total": 0
+  },
+  "deepseek_v4_flash": {
+    "cases": 40,
+    "success_count": 37,
+    "success_rate": 0.925,
+    "avg_total_score": 0.875,
+    "sum_total_score": 35.0,
+    "estimated_total_cost_usd": 0.00214676,
+    "avg_elapsed_ms": 8087.24,
+    "min_elapsed_ms": 2426.69,
+    "max_elapsed_ms": 24602.06,
+    "structured_output_rate": 0.725,
+    "second_attempt_rate": 0.2,
+    "cached_tokens_total": 0,
+    "cache_write_tokens_total": 0
+  }
+}

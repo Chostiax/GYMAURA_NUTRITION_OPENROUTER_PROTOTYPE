@@ -39,22 +39,6 @@ def _get_float_env(name: str, default: float) -> float:
         return default
 
 
-def _extract_cached_tokens(usage: dict[str, Any] | None) -> int:
-    if not usage:
-        return 0
-
-    details = usage.get("prompt_tokens_details") or {}
-    return int(details.get("cached_tokens") or 0)
-
-
-def _extract_cache_write_tokens(usage: dict[str, Any] | None) -> int:
-    if not usage:
-        return 0
-
-    details = usage.get("prompt_tokens_details") or {}
-    return int(details.get("cache_write_tokens") or 0)
-
-
 def _estimate_cost_usd(provider: str, usage: dict[str, Any] | None) -> float | None:
     if not usage:
         return None
@@ -73,6 +57,22 @@ def _estimate_cost_usd(provider: str, usage: dict[str, Any] | None) -> float | N
     return round(cost, 10)
 
 
+def _extract_cached_tokens(usage: dict[str, Any] | None) -> int:
+    if not usage:
+        return 0
+
+    details = usage.get("prompt_tokens_details") or {}
+    return int(details.get("cached_tokens") or 0)
+
+
+def _extract_cache_write_tokens(usage: dict[str, Any] | None) -> int:
+    if not usage:
+        return 0
+
+    details = usage.get("prompt_tokens_details") or {}
+    return int(details.get("cache_write_tokens") or 0)
+
+
 def _extract_content(payload: dict[str, Any]) -> str:
     choices = payload.get("choices") or []
     if not choices:
@@ -80,6 +80,9 @@ def _extract_content(payload: dict[str, Any]) -> str:
 
     message = choices[0].get("message") or {}
     content = message.get("content", "")
+
+    if content is None:
+        return ""
 
     if isinstance(content, str):
         return content.strip()
@@ -89,7 +92,7 @@ def _extract_content(payload: dict[str, Any]) -> str:
         for block in content:
             if isinstance(block, dict):
                 if block.get("type") == "text":
-                    parts.append(block.get("text", ""))
+                    parts.append(str(block.get("text", "")))
                 elif "text" in block:
                     parts.append(str(block.get("text", "")))
         return "\n".join(parts).strip()
@@ -154,7 +157,7 @@ def chat_completion(
 
     payload = response.json()
     usage = payload.get("usage") or {}
-    raw_output = _extract_content(payload)
+    raw_output = _extract_content(payload) or ""
 
     return {
         "raw_output": raw_output,

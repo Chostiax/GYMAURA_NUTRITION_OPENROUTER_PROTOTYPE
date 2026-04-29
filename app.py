@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 
 from src.data_prep import CATEGORY_ID_TO_NAME, load_and_prepare_dataset
+from src.nutrition import compute_item_nutrition
 from src.pipeline import run_pipeline
 
 DATA_PATH = "data/USDA_V2_merged.json"
@@ -116,14 +117,64 @@ def recompute_macros_from_edited_df(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_totals_from_edited_df(df: pd.DataFrame) -> dict:
+    if df.empty:
+        return {"calories": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0}
+
     active = df[df["include"] == True].copy()
 
     return {
-        "calories": round(float(active["calories"].sum()), 2) if "calories" in active else 0.0,
-        "protein_g": round(float(active["protein_g"].sum()), 2) if "protein_g" in active else 0.0,
-        "carbs_g": round(float(active["carbs_g"].sum()), 2) if "carbs_g" in active else 0.0,
-        "fat_g": round(float(active["fat_g"].sum()), 2) if "fat_g" in active else 0.0,
+        "calories": round(float(active["calories"].sum()), 2),
+        "protein_g": round(float(active["protein_g"].sum()), 2),
+        "carbs_g": round(float(active["carbs_g"].sum()), 2),
+        "fat_g": round(float(active["fat_g"].sum()), 2),
     }
+
+
+def search_dataset(dataset: pd.DataFrame, query: str, max_results: int = 25) -> pd.DataFrame:
+    query = (query or "").strip().lower()
+    if not query:
+        return pd.DataFrame()
+
+    english = dataset["english_description"].fillna("").str.lower()
+    clean = dataset["clean_description"].fillna("").str.lower()
+
+    exact = dataset[(english == query) | (clean == query)].copy()
+    contains = dataset[
+        english.str.contains(query, na=False, regex=False)
+        | clean.str.contains(query, na=False, regex=False)
+    ].copy()
+
+    results = pd.concat([exact, contains]).drop_duplicates().head(max_results)
+    return results
+
+
+def add_manual_item_to_editable_df(
+    editable_df: pd.DataFrame,
+    dataset_row,
+    grams: float,
+) -> pd.DataFrame:
+    nutrition = compute_item_nutrition(dataset_row, grams)
+    nutrition = nutrition_to_flat_dict(nutrition)
+
+    new_row = {
+        "include": True,
+        "item_index": len(editable_df),
+        "food_text": dataset_row.get("english_description"),
+        "nutrition_source": "manual_dataset",
+        "matched": True,
+        "grams": float(grams),
+        "base_grams": float(grams),
+        "calories": nutrition["calories"],
+        "protein_g": nutrition["protein_g"],
+        "carbs_g": nutrition["carbs_g"],
+        "fat_g": nutrition["fat_g"],
+        "base_calories": nutrition["calories"],
+        "base_protein_g": nutrition["protein_g"],
+        "base_carbs_g": nutrition["carbs_g"],
+        "base_fat_g": nutrition["fat_g"],
+    }
+
+    return pd.concat([editable_df, pd.DataFrame([new_row])], ignore_index=True)
 
 
 st.set_page_config(page_title="GymAura Nutrition Prototype", layout="wide")
@@ -277,7 +328,7 @@ if result is not None:
 
     st.subheader("Review / Edit Detected Items")
     st.write(
-        "Uncheck items that are wrong, or edit grams. Macros are recalculated dynamically from the original item nutrition."
+        "Uncheck wrong items, edit grams, or manually add missing foods from the dataset. Macros recalculate dynamically."
     )
 
     editable_df = st.session_state.editable_items_df
@@ -328,7 +379,52 @@ if result is not None:
         for col in ["include", "grams"]:
             full_df[col] = edited_df[col]
 
-        recalculated_df = recompute_macros_from_edited_df(full_df)
+        st.session_state.editable_items_df = full_df
+
+        st.subheader("Manually Add Item from Dataset")
+
+        manual_query = st.text_input(
+            "Search food in USDA dataset",
+            placeholder="Example: apple, rice, chicken breast",
+        )
+
+        manual_results = search_dataset(dataset, manual_query)
+
+        if manual_query.strip() and manual_results.empty:
+            st.info("No matching food found in the dataset.")
+
+        if not manual_results.empty:
+            manual_options = {
+                f"{row['english_description']} — {row.get('food_category', 'Unknown category')}": idx
+                for idx, row in manual_results.iterrows()
+            }
+
+            selected_label = st.selectbox(
+                "Select food item",
+                list(manual_options.keys()),
+            )
+
+            manual_grams = st.number_input(
+                "Manual item grams",
+                min_value=1.0,
+                value=100.0,
+                step=1.0,
+            )
+
+            if st.button("Add Manual Item"):
+                selected_idx = manual_options[selected_label]
+                selected_row = dataset.loc[selected_idx]
+
+                st.session_state.editable_items_df = add_manual_item_to_editable_df(
+                    st.session_state.editable_items_df,
+                    selected_row,
+                    manual_grams,
+                )
+
+                st.success(f"Added {selected_row['english_description']} ({manual_grams}g).")
+                st.rerun()
+
+        recalculated_df = recompute_macros_from_edited_df(st.session_state.editable_items_df)
         edited_totals = compute_totals_from_edited_df(recalculated_df)
 
         st.subheader("Edited Meal Totals")
